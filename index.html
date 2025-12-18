@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Steampunk Card Engine - Full HUD</title>
+    <title>Steampunk Tactical Interface</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -10,6 +10,7 @@
             --brass: #b5a642; --bronze: #cd7f32; --leather: #4a3c31;
             --parchment: #eaddcf; --dark-metal: #2c2c2c; --glow: #ffae00;
             --steam-blue: #00f3ff;
+            --tier-1: #cd7f32; --tier-2: #c0c0c0; --tier-3: #ffd700;
         }
 
         body {
@@ -18,271 +19,270 @@
             overflow: hidden; height: 100vh;
         }
 
-        /* --- 頂部：敵人區域 --- */
-        #enemy-hud {
-            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; align-items: center; gap: 20px;
+        /* --- 頂部：多敵人動態生成 --- */
+        #enemy-container {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 20px; justify-content: center; width: 95%;
         }
 
-        /* --- 中間：玩家血量 (位於手牌上方) --- */
-        #player-status-area {
-            position: absolute; bottom: 340px; left: 50%; transform: translateX(-50%);
-            width: 400px; text-align: center;
+        .enemy-box {
+            width: 260px; background: var(--dark-metal); border: 4px ridge var(--brass);
+            padding: 12px; position: relative; transition: 0.3s;
         }
 
-        .hp-bar {
-            width: 100%; height: 20px; background: #111; border: 2px solid #555;
-            border-radius: 10px; overflow: hidden; margin-top: 5px;
-        }
-        .hp-fill-enemy { background: linear-gradient(180deg, #ff4444, #880000); width: 100%; transition: 0.3s; }
-        .hp-fill-player { background: linear-gradient(180deg, #44ff44, #008800); width: 100%; transition: 0.3s; }
+        /* 根據類型顯示邊框色 */
+        .type-1 { border-color: var(--tier-1); }
+        .type-2 { border-color: var(--tier-2); box-shadow: 0 0 10px var(--tier-2); }
+        .type-3 { border-color: var(--tier-3); box-shadow: 0 0 20px var(--tier-3); }
 
-        /* --- 左側：費用與回合儀表 --- */
+        .row-id { font-size: 0.7rem; color: #888; font-family: monospace; }
+
+        /* --- 側邊資訊 --- */
         #left-gauges {
-            position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
-            display: flex; flex-direction: column; gap: 20px;
+            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 15px;
         }
 
-        .gauge-box {
-            width: 120px; background: var(--leather); border: 4px solid var(--bronze);
-            border-radius: 15px; padding: 15px; text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        .gauge {
+            width: 100px; background: var(--leather); border: 3px solid var(--bronze);
+            border-radius: 12px; padding: 10px; text-align: center;
         }
 
-        .energy-circle {
-            font-family: 'Rye'; font-size: 2.5rem; color: var(--steam-blue);
-            text-shadow: 0 0 10px var(--steam-blue);
-        }
-
-        /* --- 結束回合按鈕 --- */
-        #end-turn-btn {
+        /* --- 按鈕：結束行動 --- */
+        #end-action-btn {
             position: absolute; right: 30px; top: 50%; transform: translateY(-50%);
-            width: 100px; height: 100px; border-radius: 50%;
-            background: var(--bronze); border: 5px double var(--brass);
-            font-family: 'Rye'; cursor: pointer; color: white;
+            width: 110px; height: 110px; border-radius: 50%;
+            background: radial-gradient(circle, var(--bronze), var(--leather));
+            border: 5px double var(--brass); color: white; cursor: pointer;
+            font-family: 'Rye'; text-shadow: 1px 1px 2px #000;
         }
 
-        /* --- 手牌區 --- */
+        /* --- 卡牌 --- */
         #hand-area {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; height: 300px; display: flex; justify-content: center;
+            width: 90%; height: 280px; display: flex; justify-content: center;
             align-items: flex-end; pointer-events: none;
         }
 
         .card {
-            width: 160px; height: 240px; background: var(--parchment); color: #221100;
-            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -10px;
-            pointer-events: auto; cursor: grab; transition: 0.2s; position: relative;
+            width: 155px; height: 230px; background: var(--parchment); color: #221100;
+            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -8px;
+            pointer-events: auto; cursor: grab; position: relative;
         }
-        .card:hover { transform: translateY(-40px) scale(1.1); z-index: 100; border-color: var(--steam-blue); }
+        
+        .card-meta {
+            position: absolute; top: -12px; left: -12px; text-align: center;
+        }
         .card-cost {
-            position: absolute; top: -10px; left: -10px; width: 35px; height: 35px;
-            background: var(--dark-metal); color: var(--steam-blue); border: 2px solid var(--steam-blue);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye';
+            width: 38px; height: 38px; background: var(--dark-metal); color: var(--steam-blue);
+            border: 2px solid var(--steam-blue); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-family: 'Rye';
         }
+
+        .hp-bar { width: 100%; height: 12px; background: #000; border-radius: 6px; overflow: hidden; margin: 8px 0; }
+        .hp-fill { height: 100%; transition: 0.3s; background: #d93d3d; }
+
         .dragging { position: fixed !important; transform: scale(0.6) !important; pointer-events: none; z-index: 1000; }
-        .target-hover { box-shadow: 0 0 30px var(--steam-blue) !important; border-color: var(--steam-blue) !important; }
     </style>
 </head>
 <body>
 
-    <div id="enemy-hud">
-        <div class="gauge-box" style="width: 80px;">
-            <div style="font-size:0.7rem">ROUND</div>
-            <div id="round-val" style="font-family:'Rye'; font-size:1.5rem">1</div>
-        </div>
-        <div class="gauge-box" id="enemy-zone" style="width: 350px;">
-            <div style="display:flex; justify-content:space-between">
-                <span id="enemy-name" style="font-family:'Rye'">ENEMIZING...</span>
-                <span id="enemy-hp-text">100/100</span>
-            </div>
-            <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill-enemy" style="height:100%"></div></div>
-        </div>
-    </div>
+    <div id="enemy-container"></div>
 
     <div id="left-gauges">
-        <div class="gauge-box">
-            <div style="font-size:0.8rem">STEAM ENERGY</div>
-            <div id="energy-val" class="energy-circle">3 / 3</div>
-            <div style="font-size:0.6rem; color:var(--bronze)">PRESSURIZED</div>
+        <div class="gauge">
+            <div style="font-size:0.7rem">ROUND</div>
+            <div id="round-val" style="font-family:'Rye'; font-size:1.8rem; color:var(--glow)">1</div>
         </div>
-        <div class="gauge-box">
-            <div style="font-size:0.8rem">ENEMIES LEFT</div>
-            <div id="enemy-count" style="font-family:'Rye'; font-size:1.5rem">0</div>
+        <div class="gauge">
+            <div style="font-size:0.7rem">ENERGY</div>
+            <div id="energy-val" style="font-family:'Rye'; font-size:1.8rem; color:var(--steam-blue)">3/3</div>
         </div>
     </div>
 
-    <div id="player-status-area">
-        <div style="display:flex; justify-content:space-between; font-family:'Rye'; font-size:0.9rem">
-            <span>PLAYER_INTEGRITY</span>
+    <div style="position:absolute; bottom:330px; left:50%; transform:translateX(-50%); width:400px; text-align:center;">
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem">
+            <span>UNIT_PLAYER</span>
             <span id="player-hp-text">100 / 100</span>
         </div>
-        <div class="hp-bar"><div id="player-hp-fill" class="hp-fill-player" style="height:100%"></div></div>
+        <div class="hp-bar"><div id="player-hp-fill" class="hp-fill" style="background:#44ff44; width:100%"></div></div>
     </div>
 
-    <button id="end-turn-btn">NEXT<br>GEAR</button>
+    <button id="end-action-btn">END<br>ACTION</button>
     <div id="hand-area"></div>
 
     <script>
-        // --- 遊戲狀態管理 ---
         let state = {
-            playerHP: 100,
-            playerMaxHP: 100,
-            energy: 3,
-            maxEnergy: 3,
+            playerHP: 100, playerMaxHP: 100,
+            energy: 3, maxEnergy: 3,
             round: 1,
-            enemyIdx: 0,
-            currentEnemyHP: 0,
-            enemies: [],
-            allCards: []
+            enemiesOnField: [],
+            allCards: [],
+            allEnemyPool: []
         };
 
-        // 模擬數據
-        const MOCK_CARDS = `Name,Effect,Cost
-重型扳手,造成 [#dmg 25] 點傷害,1
-鍋爐修復,自我修復 [#heal 20] 點,2
-蒸氣爆發,造成 [#dmg 60] 但自己過熱 [#heal -15],3
-抽牌指令,從牌堆 [#draw 1] 資源,1`;
+        // --- 載入邏輯 ---
+        function loadGameData() {
+            // 您原本的基礎 URL 請替換到這裡
+            const baseUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv"; 
 
-        const MOCK_ENEMIES = `Name,HP
-自動巡邏機,60
-發條衛兵,150
-蒸汽堡壘,400`;
+            // 這裡用模擬數據演示格式
+            const mockCards = `Name,Effect,Cost
+精密狙擊,造成 [#dmg 40] 點傷害,2
+緊急維修,自我修復 [#heal 20],1
+超負荷指令,強制進入下一波 [#nextround 1],3`;
+            
+            const mockEnemies = `Name,HP,Type
+發條蜘蛛,40,1
+精英守衛,120,2
+蒸汽神兵,400,3`;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadData();
-            document.getElementById('end-turn-btn').onclick = endTurn;
-        });
+            // 處理卡牌
+            Papa.parse(mockCards, { header: true, complete: res => {
+                state.allCards = res.data.map((r, i) => ({...r, row: i + 2}));
+                drawCards(5);
+            }});
 
-        function loadData() {
-    // 1. 貼上你的卡牌 CSV 連結
-    const cardUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv"; 
-    
-    // 2. 貼上你的敵人 CSV 連結
-    const enemyUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8//pub?gid=322780304&output=csv";
-
-    // 使用 Papa.parse 讀取真實網路資料
-    Papa.parse(cardUrl, { 
-        download: true, // 這裡一定要改為 true
-        header: true, 
-        complete: res => { 
-            state.allCards = res.data; 
-            drawCards(5); 
+            // 處理敵人
+            Papa.parse(mockEnemies, { header: true, complete: res => {
+                state.allEnemyPool = res.data.map((r, i) => ({...r, row: i + 2}));
+                spawnWave();
+            }});
         }
-    });
 
-    Papa.parse(enemyUrl, { 
-        download: true, // 這裡一定要改為 true
-        header: true, 
-        complete: res => { 
-            state.enemies = res.data; 
-            state.enemyIdx = 0;
-            spawnEnemy();
+        function spawnWave() {
+            state.enemiesOnField = [];
+            // 每回合隨機抓 1-3 隻敵人
+            const count = Math.floor(Math.random() * 3) + 1;
+            for(let i=0; i<count; i++) {
+                let data = state.allEnemyPool[Math.floor(Math.random()*state.allEnemyPool.length)];
+                state.enemiesOnField.push({
+                    ...data,
+                    currentHP: parseInt(data.HP),
+                    id: Date.now() + i
+                });
+            }
+            renderEnemies();
         }
-    });
-}
 
-        function spawnEnemy() {
-            const e = state.enemies[state.enemyIdx];
-            if(!e) return alert("Victory!");
-            state.currentEnemyHP = parseInt(e.HP);
-            state.currentEnemyMaxHP = parseInt(e.HP);
-            document.getElementById('enemy-name').innerText = e.Name;
-            document.getElementById('enemy-count').innerText = state.enemies.length - state.enemyIdx;
-            updateUI();
+        function renderEnemies() {
+            const container = document.getElementById('enemy-container');
+            container.innerHTML = '';
+            state.enemiesOnField.forEach(en => {
+                const el = document.createElement('div');
+                el.className = `enemy-box type-${en.Type}`;
+                el.id = `en-${en.id}`;
+                const hpPct = (en.currentHP / en.HP) * 100;
+                el.innerHTML = `
+                    <div style="font-family:'Rye'">${en.Name}</div>
+                    <div class="row-id">From Row: ${en.row}</div>
+                    <div class="hp-bar"><div class="hp-fill" style="width:${hpPct}%"></div></div>
+                    <div style="font-size:0.7rem; text-align:right">${en.currentHP} / ${en.HP}</div>
+                `;
+                container.appendChild(el);
+            });
         }
 
         function drawCards(num) {
             const hand = document.getElementById('hand-area');
+            hand.innerHTML = '';
             for(let i=0; i<num; i++) {
                 const data = state.allCards[Math.floor(Math.random()*state.allCards.length)];
-                if(!data.Name) continue;
+                if(!data || !data.Name) continue;
                 const cardEl = document.createElement('div');
                 cardEl.className = 'card';
-                cardEl.innerHTML = `<div class="card-cost">${data.Cost}</div>
-                                    <div style="font-family:'Rye';padding:10px;text-align:center;border-bottom:1px solid #444">${data.Name}</div>
-                                    <div style="padding:15px;font-size:0.85rem;text-align:center">${data.Effect}</div>`;
-                addDrag(cardEl, data);
+                cardEl.innerHTML = `
+                    <div class="card-meta">
+                        <div class="card-cost">${data.Cost}</div>
+                        <div class="row-id">Row:${data.row}</div>
+                    </div>
+                    <div style="font-family:'Rye';padding:12px;text-align:center">${data.Name}</div>
+                    <div style="padding:10px;font-size:0.8rem;text-align:center">${data.Effect}</div>
+                `;
+                bindDrag(cardEl, data);
                 hand.appendChild(cardEl);
             }
         }
 
-        function addDrag(el, data) {
+        function bindDrag(el, data) {
             el.onmousedown = (e) => {
-                const cost = parseInt(data.Cost);
-                if(state.energy < cost) {
-                    el.style.boxShadow = "0 0 20px red";
-                    setTimeout(()=> el.style.boxShadow = "", 300);
-                    return; // 能量不足不能拖
-                }
-
+                if(state.energy < data.Cost) return;
                 const rect = el.getBoundingClientRect();
                 el.classList.add('dragging');
-
-                const move = (ev) => {
+                
+                document.onmousemove = (ev) => {
                     el.style.left = ev.pageX - rect.width/2 + 'px';
                     el.style.top = ev.pageY - rect.height/2 - 50 + 'px';
-                    const target = document.elementFromPoint(ev.clientX, ev.clientY);
-                    if(document.getElementById('enemy-zone').contains(target)) 
-                        document.getElementById('enemy-zone').classList.add('target-hover');
-                    else document.getElementById('enemy-zone').classList.remove('target-hover');
                 };
 
-                document.onmousemove = move;
                 document.onmouseup = (ev) => {
                     document.onmousemove = null;
                     const target = document.elementFromPoint(ev.clientX, ev.clientY);
-                    if(document.getElementById('enemy-zone').contains(target)) {
-                        playCard(data);
+                    const enemyEl = target?.closest('.enemy-box');
+
+                    if(enemyEl) {
+                        const enId = enemyEl.id.split('-')[1];
+                        executeEffect(data.Effect, enId);
+                        state.energy -= data.Cost;
                         el.remove();
                     } else {
-                        el.classList.remove('dragging'); el.style.position = '';
+                        el.classList.remove('dragging');
+                        el.style.position = '';
                     }
-                    document.getElementById('enemy-zone').classList.remove('target-hover');
+                    updateUI();
                     document.onmouseup = null;
                 };
             };
         }
 
-        function playCard(data) {
-            state.energy -= parseInt(data.Cost);
-            // 標籤解析
+        function executeEffect(effect, targetId) {
             const regex = /\[#(\w+)\s+(-?\d+)\]/g;
             let match;
-            while ((match = regex.exec(data.Effect)) !== null) {
+            while ((match = regex.exec(effect)) !== null) {
+                const tag = match[1];
                 const val = parseInt(match[2]);
-                if(match[1] === 'dmg') state.currentEnemyHP -= val;
-                if(match[1] === 'heal') {
-                    state.playerHP += val;
-                    if(state.playerHP > state.playerMaxHP) state.playerHP = state.playerMaxHP;
+
+                if(tag === 'dmg') {
+                    let en = state.enemiesOnField.find(e => e.id == targetId);
+                    if(en) en.currentHP -= val;
+                }
+                if(tag === 'heal') {
+                    state.playerHP = Math.min(state.playerMaxHP, state.playerHP + val);
+                }
+                if(tag === 'nextround') {
+                    triggerNextRound();
                 }
             }
-            if(state.currentEnemyHP <= 0) { state.enemyIdx++; spawnEnemy(); }
+            
+            // 檢查敵人是否全滅
+            state.enemiesOnField = state.enemiesOnField.filter(en => en.currentHP > 0);
+            if(state.enemiesOnField.length === 0) triggerNextRound();
+            else renderEnemies();
+        }
+
+        function triggerNextRound() {
+            state.round++;
+            state.energy = state.maxEnergy;
+            spawnWave();
+            drawCards(5);
             updateUI();
         }
 
-        function endTurn() {
-            state.round++;
-            state.energy = state.maxEnergy; // 恢復能量
-            document.getElementById('hand-area').innerHTML = '';
+        function endAction() {
+            state.energy = state.maxEnergy;
             drawCards(5);
             updateUI();
         }
 
         function updateUI() {
-            document.getElementById('energy-val').innerText = `${state.energy} / ${state.maxEnergy}`;
+            document.getElementById('energy-val').innerText = `${state.energy}/${state.maxEnergy}`;
             document.getElementById('round-val').innerText = state.round;
-            
-            // 敵人 HP
-            const ePct = Math.max(0, (state.currentEnemyHP / state.currentEnemyMaxHP) * 100);
-            document.getElementById('enemy-hp-fill').style.width = ePct + '%';
-            document.getElementById('enemy-hp-text').innerText = `${state.currentEnemyHP} / ${state.currentEnemyMaxHP}`;
-
-            // 玩家 HP
-            const pPct = Math.max(0, (state.playerHP / state.playerMaxHP) * 100);
-            document.getElementById('player-hp-fill').style.width = pPct + '%';
+            document.getElementById('player-hp-fill').style.width = (state.playerHP/state.playerMaxHP)*100 + '%';
             document.getElementById('player-hp-text').innerText = `${state.playerHP} / ${state.playerMaxHP}`;
         }
+
+        document.getElementById('end-action-btn').onclick = endAction;
+        document.addEventListener('DOMContentLoaded', loadGameData);
     </script>
 </body>
 </html>

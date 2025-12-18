@@ -2,125 +2,155 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Steampunk Duel v4.5 - Stable Data</title>
+    <title>Steampunk Duelist - High Fidelity</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brass: #b5a642; --bronze: #cd7f32; --leather: #4a3c31;
-            --parchment: #eaddcf; --dark-metal: #2c2c2c; --steam-blue: #00f3ff;
-            --hp-red: #d93d3d; --hp-green: #44ff44;
+            --brass: #b5a642; --bronze: #cd7f32; --gold: #ffd700;
+            --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
+            --danger: #ff4444; --success: #44ff44;
         }
 
         body {
-            margin: 0; padding: 0; background: #1a1510;
+            margin: 0; padding: 0; background: #120f0d;
             color: var(--parchment); font-family: 'IM Fell English SC', serif;
             overflow: hidden; height: 100vh;
+            background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
         }
 
-        /* --- 戰鬥佈局 --- */
-        #battle-scene {
-            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
-            display: flex; align-items: center; gap: 20px;
+        /* --- 頂部戰鬥區域 --- */
+        #battle-stage {
+            position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 40px;
         }
 
-        #round-box {
-            width: 70px; height: 70px; background: var(--leather); border: 3px solid var(--bronze);
-            border-radius: 10px; text-align: center; display: flex; flex-direction: column; justify-content: center;
+        /* 回合儀表 */
+        .round-gauge {
+            width: 80px; height: 100px; background: var(--leather);
+            border: 3px double var(--brass); border-radius: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: inset 0 0 10px #000;
         }
 
-        .enemy-unit {
-            width: 400px; background: var(--dark-metal); border: 4px ridge var(--brass);
-            padding: 20px; position: relative; cursor: pointer; transition: 0.2s;
+        /* 敵人單元 */
+        .enemy-box {
+            width: 420px; background: #222; border: 6px ridge var(--bronze);
+            padding: 25px; border-radius: 5px; position: relative;
+            cursor: pointer; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .enemy-unit:hover { border-color: var(--steam-blue); }
-
-        /* 抖動動畫：根據類型強度不同 */
-        @keyframes shake-light { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(1px,1px); } 75% { transform: translate(-1px,-1px); } }
-        @keyframes shake-heavy { 0%, 100% { transform: translate(0,0); } 20% { transform: translate(-3px,2px); } 60% { transform: translate(3px,-2px); } }
         
-        .shake-1 { animation: shake-light 0.8s infinite; }
-        .shake-2 { animation: shake-light 0.3s infinite; border-color: #aaa; }
-        .shake-3 { animation: shake-heavy 0.15s infinite; border-color: #ffd700; box-shadow: 0 0 15px rgba(255,215,0,0.5); }
+        /* 敵人類型視覺 */
+        .tier-1 { border-color: var(--bronze); animation: idle 3s infinite ease-in-out; }
+        .tier-2 { border-color: #c0c0c0; box-shadow: 0 0 15px rgba(255,255,255,0.2); animation: shake-mid 0.4s infinite; }
+        .tier-3 { border-color: var(--gold); box-shadow: 0 0 30px rgba(255,215,0,0.4); animation: shake-boss 0.15s infinite; }
 
-        /* --- 玩家區域 --- */
-        #player-hub {
-            position: absolute; bottom: 310px; left: 50%; transform: translateX(-50%);
-            width: 420px; text-align: center; cursor: pointer; padding: 15px;
-            border-radius: 10px; transition: 0.3s;
+        @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes shake-mid { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } }
+        @keyframes shake-boss { 0% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } }
+
+        /* --- 玩家血量與操作 --- */
+        #player-area {
+            position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%);
+            width: 450px; cursor: pointer; padding: 10px; border-radius: 15px; transition: 0.3s;
         }
-        .target-active { background: rgba(0, 243, 255, 0.15); box-shadow: 0 0 20px var(--steam-blue); }
 
-        /* --- 手牌 --- */
+        .target-glow { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); background: rgba(0,243,255,0.05); }
+
+        /* --- 左側儀表板 --- */
+        #side-panel {
+            position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        .gauge-circle {
+            width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%;
+            background: radial-gradient(circle, var(--leather), #111);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* --- 卡牌設計 --- */
         #hand-area {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; display: flex; justify-content: center; gap: 15px; pointer-events: none;
+            width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end;
         }
 
         .card {
-            width: 150px; height: 210px; background: var(--parchment); color: #221100;
-            border: 4px solid var(--bronze); border-radius: 10px; pointer-events: auto;
-            cursor: pointer; position: relative; transition: 0.2s;
+            width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a;
+            border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -5px;
+            cursor: pointer; position: relative; transition: 0.3s;
+            background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
         }
-        .card.is-selected { transform: translateY(-40px); border-color: var(--steam-blue); box-shadow: 0 0 25px var(--steam-blue); }
-        
-        .card-row-id { position: absolute; bottom: 6px; right: 10px; font-size: 0.8rem; font-weight: bold; opacity: 0.5; }
+        .card:hover { transform: translateY(-20px) scale(1.05); z-index: 10; }
+        .card.active { transform: translateY(-60px) scale(1.1); z-index: 100; border-color: var(--steam-blue); box-shadow: 0 10px 30px #000; }
+
         .card-cost {
-            position: absolute; top: -12px; left: -12px; width: 36px; height: 36px;
-            background: var(--dark-metal); color: var(--steam-blue); border: 2px solid var(--steam-blue);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye';
+            position: absolute; top: -15px; left: -15px; width: 45px; height: 45px;
+            background: #222; color: var(--steam-blue); border: 3px solid var(--steam-blue);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-family: 'Rye'; font-size: 1.4rem; box-shadow: 0 0 10px var(--steam-blue);
         }
 
-        .hp-bar { width: 100%; height: 18px; background: #000; border-radius: 9px; overflow: hidden; margin: 8px 0; border: 1px solid #444; }
-        .hp-fill { height: 100%; transition: 0.4s; }
+        .card-row { position: absolute; bottom: 8px; right: 12px; font-size: 0.9rem; font-weight: bold; color: #842; }
 
-        #energy-display { position: absolute; left: 30px; bottom: 30px; text-align: center; }
+        /* --- 血量條 --- */
+        .hp-container { width: 100%; height: 20px; background: #000; border-radius: 10px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; }
+        .hp-fill { height: 100%; width: 100%; transition: 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
 
-        #end-turn-btn {
+        #end-action-btn {
             position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
-            width: 90px; height: 90px; border-radius: 50%; background: var(--bronze);
-            border: 4px double var(--brass); color: white; cursor: pointer; font-family: 'Rye';
+            width: 110px; height: 110px; border-radius: 50%; background: var(--bronze);
+            border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer;
+            box-shadow: 0 5px 15px #000;
         }
     </style>
 </head>
 <body>
 
-    <div id="battle-scene">
-        <div id="round-box">
-            <div style="font-size:0.6rem">ROUND</div>
-            <div id="round-val" style="font-family:'Rye'; font-size:1.8rem; color:var(--hp-green)">1</div>
+    <div id="battle-stage">
+        <div class="round-gauge">
+            <span style="font-size:0.7rem">ROUND</span>
+            <span id="round-num" style="font-family:'Rye'; font-size:2.2rem; color:var(--gold)">1</span>
         </div>
-        <div class="enemy-unit" id="target-enemy">
-            <div id="enemy-row-tag" style="font-size:0.7rem; color:#888">#--</div>
-            <div id="enemy-name" style="font-family:'Rye'; font-size:1.6rem">SCANNING...</div>
-            <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill" style="background:var(--hp-red); width:0%"></div></div>
-            <div id="enemy-hp-text" style="text-align:right; font-size:0.8rem">0 / 0</div>
+        <div class="enemy-box tier-1" id="enemy-target">
+            <div id="en-row" style="font-size:0.7rem; color: #888;">#--</div>
+            <div id="en-name" style="font-family:'Rye'; font-size:1.8rem; letter-spacing: 2px;">LOADING...</div>
+            <div class="hp-container">
+                <div id="en-hp-fill" class="hp-fill" style="background: var(--danger);"></div>
+            </div>
+            <div id="en-hp-text" style="text-align:right; font-weight:bold; font-size: 0.9rem;">-- / --</div>
         </div>
     </div>
 
-    <div id="player-hub">
-        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px;">
-            <span>USER_INTEGRITY</span>
-            <span id="player-hp-text">100 / 100</span>
+    <div id="side-panel">
+        <div class="gauge-circle">
+            <span style="font-size:0.7rem">ENERGY</span>
+            <span id="energy-text" style="font-family:'Rye'; font-size:2rem; color:var(--steam-blue)">3/3</span>
         </div>
-        <div class="hp-bar"><div id="player-hp-fill" class="hp-fill" style="background:var(--hp-green); width:100%"></div></div>
+        <div class="gauge-circle">
+            <span style="font-size:0.7rem">REMAINING</span>
+            <span id="left-count" style="font-family:'Rye'; font-size:2rem">--</span>
+        </div>
     </div>
 
-    <div id="energy-display">
-        <div style="font-size:0.7rem">STEAM PRESSURE</div>
-        <div id="energy-val" style="font-family:'Rye'; font-size:2.5rem; color:var(--steam-blue)">3/3</div>
+    <div id="player-area">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
+            <span style="letter-spacing: 1px;">PLAYER_CORE</span>
+            <span id="pl-hp-text">100 / 100</span>
+        </div>
+        <div class="hp-container">
+            <div id="pl-hp-fill" class="hp-fill" style="background: var(--success);"></div>
+        </div>
     </div>
 
-    <button id="end-turn-btn">VENT<br>STEAM</button>
+    <button id="end-action-btn">END<br>ACTION</button>
     <div id="hand-area"></div>
 
     <script>
-        const CSV_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
-        const GID_ENEMY = "322780304";
-        const GID_CARD = "0";
-
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
+        
         let state = {
-            playerHP: 100, playerMaxHP: 100,
+            playerHP: 100,
             energy: 3, maxEnergy: 3,
             round: 1,
             cards: [], enemies: [],
@@ -128,53 +158,61 @@
             selectedCard: null
         };
 
-        async function start() {
-            // 讀取敵人 - 使用數組索引避免標題名稱錯誤
-            Papa.parse(`${CSV_BASE}&gid=${GID_ENEMY}`, {
-                download: true, header: true, complete: (res) => {
+        async function init() {
+            // 讀取敵人 (gid=322780304)
+            Papa.parse(`${CSV_URL}&gid=322780304`, {
+                download: true, header: true,
+                complete: (res) => {
                     state.enemies = res.data.filter(r => Object.values(r)[0]).map((r, i) => {
-                        const vals = Object.values(r);
-                        return { name: vals[0], hp: parseInt(vals[1])||10, type: parseInt(vals[2])||1, row: i+2 };
+                        const v = Object.values(r);
+                        return { name: v[0], hp: parseInt(v[1])||0, type: parseInt(v[2])||1, row: i+2 };
                     });
-                    nextEnemy();
+                    loadEnemy();
                 }
             });
 
-            // 讀取卡牌
-            Papa.parse(`${CSV_BASE}&gid=${GID_CARD}`, {
-                download: true, header: true, complete: (res) => {
+            // 讀取卡牌 (gid=0)
+            Papa.parse(`${CSV_URL}&gid=0`, {
+                download: true, header: true,
+                complete: (res) => {
                     state.cards = res.data.filter(r => Object.values(r)[0]).map((r, i) => {
-                        const vals = Object.values(r);
-                        return { name: vals[0], effect: vals[1], cost: parseInt(vals[2])||0, row: i+2 };
+                        const v = Object.values(r);
+                        return { name: v[0], effect: v[1], cost: parseInt(v[2])||0, row: i+2 };
                     });
-                    draw(5);
+                    drawCards(5);
                     updateUI();
                 }
             });
         }
 
-        function nextEnemy() {
+        function loadEnemy() {
             if (state.enemyIdx < state.enemies.length) {
-                const data = state.enemies[state.enemyIdx];
-                state.curEnemy = { ...data, curHP: data.hp };
-                const box = document.getElementById('target-enemy');
-                box.className = `enemy-unit shake-${data.type}`;
-                updateEnemyUI();
+                state.curEnemy = { ...state.enemies[state.enemyIdx], curHP: state.enemies[state.enemyIdx].hp };
+                const box = document.getElementById('enemy-target');
+                box.className = `enemy-box tier-${state.curEnemy.type}`;
+                updateUI();
             } else {
-                document.getElementById('enemy-name').innerText = "ALL CLEAR";
+                document.getElementById('en-name').innerText = "CONQUERED";
             }
         }
 
-        function updateEnemyUI() {
-            if(!state.curEnemy) return;
-            document.getElementById('enemy-name').innerText = state.curEnemy.name;
-            document.getElementById('enemy-row-tag').innerText = `#${state.curEnemy.row}`;
-            const pct = (state.curEnemy.curHP / state.curEnemy.hp) * 100;
-            document.getElementById('enemy-hp-fill').style.width = Math.max(0, pct) + '%';
-            document.getElementById('enemy-hp-text').innerText = `${state.curEnemy.curHP} / ${state.curEnemy.hp}`;
+        function updateUI() {
+            if(state.curEnemy) {
+                document.getElementById('en-name').innerText = state.curEnemy.name;
+                document.getElementById('en-row').innerText = `Sheet Row: ${state.curEnemy.row}`;
+                const enPct = (state.curEnemy.curHP / state.curEnemy.hp) * 100;
+                document.getElementById('en-hp-fill').style.width = enPct + '%';
+                document.getElementById('en-hp-text').innerText = `${state.curEnemy.curHP} / ${state.curEnemy.hp}`;
+            }
+            
+            document.getElementById('left-count').innerText = state.enemies.length - state.enemyIdx;
+            document.getElementById('round-num').innerText = state.round;
+            document.getElementById('energy-text').innerText = `${state.energy}/${state.maxEnergy}`;
+            document.getElementById('pl-hp-text').innerText = `${state.playerHP} / 100`;
+            document.getElementById('pl-hp-fill').style.width = state.playerHP + '%';
         }
 
-        function draw(n) {
+        function drawCards(n) {
             const area = document.getElementById('hand-area');
             area.innerHTML = '';
             for(let i=0; i<n; i++) {
@@ -182,83 +220,78 @@
                 if(!data) continue;
                 const el = document.createElement('div');
                 el.className = 'card';
-                // 顯示邏輯：將 [#TAG X] 轉化為純數字顯示
-                const displayEffect = data.effect.replace(/\[#\w+\s+(-?\d+)\]/g, '$1');
-                
+                // 卡面效果只顯示數字
+                const numOnly = data.effect.replace(/\[#\w+\s+(-?\d+)\]/g, '$1');
                 el.innerHTML = `
                     <div class="card-cost">${data.cost}</div>
-                    <div style="padding:12px; text-align:center; font-family:'Rye'; border-bottom:1px solid #ddd">${data.name}</div>
-                    <div style="padding:15px; text-align:center; font-size:1.2rem; font-weight:bold; color:var(--bronze)">${displayEffect}</div>
-                    <div class="card-row-id">${data.row}</div>
+                    <div style="padding:15px; text-align:center; font-family:'Rye'; font-size:1.1rem; border-bottom:1px solid #ccc">${data.name}</div>
+                    <div style="margin-top:40px; text-align:center; font-size:2.5rem; font-family:'Rye'; color:var(--bronze)">${numOnly}</div>
+                    <div class="card-row">${data.row}</div>
                 `;
-                el.onclick = (e) => { e.stopPropagation(); select(el, data); };
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    if(state.energy < data.cost) return;
+                    if(state.selectedCard?.el === el) { cancelSelect(); return; }
+                    cancelSelect();
+                    state.selectedCard = { el, data };
+                    el.classList.add('active');
+                    document.getElementById('enemy-target').classList.add('target-glow');
+                    document.getElementById('player-area').classList.add('target-glow');
+                };
                 area.appendChild(el);
             }
         }
 
-        function select(el, data) {
-            if(state.selectedCard?.el === el) { cancel(); return; }
-            if(state.energy < data.cost) return;
-            cancel();
-            state.selectedCard = { el, data };
-            el.classList.add('is-selected');
-            document.getElementById('player-hub').classList.add('target-active');
-            document.getElementById('target-enemy').classList.add('target-active');
-        }
-
-        function cancel() {
-            if(state.selectedCard) state.selectedCard.el.classList.remove('is-selected');
+        function cancelSelect() {
+            if(state.selectedCard) state.selectedCard.el.classList.remove('active');
             state.selectedCard = null;
-            document.querySelectorAll('.target-active').forEach(e => e.classList.remove('target-active'));
+            document.querySelectorAll('.target-glow').forEach(el => el.classList.remove('target-glow'));
         }
 
         // 點擊敵人
-        document.getElementById('target-enemy').onclick = () => {
-            if(state.selectedCard) {
-                apply(state.selectedCard.data, "enemy");
-                state.selectedCard.el.remove();
-                cancel();
-            }
+        document.getElementById('enemy-target').onclick = () => {
+            if(!state.selectedCard) return;
+            executeAction("enemy");
         };
 
         // 點擊玩家
-        document.getElementById('player-hub').onclick = () => {
-            if(state.selectedCard) {
-                apply(state.selectedCard.data, "player");
-                state.selectedCard.el.remove();
-                cancel();
-            }
+        document.getElementById('player-area').onclick = () => {
+            if(!state.selectedCard) return;
+            executeAction("player");
         };
 
-        function apply(data, type) {
+        function executeAction(targetType) {
+            const data = state.selectedCard.data;
             state.energy -= data.cost;
+            
             const regex = /\[#(\w+)\s+(-?\d+)\]/g;
             let m;
             while ((m = regex.exec(data.effect)) !== null) {
                 const tag = m[1], val = parseInt(m[2]);
-                if(tag === 'dmg' && type === "enemy") state.curEnemy.curHP -= val;
+                if(tag === 'dmg' && targetType === "enemy") state.curEnemy.curHP -= val;
                 if(tag === 'heal') state.playerHP = Math.min(100, state.playerHP + val);
-                if(tag === 'nextround') { forceNext(); return; }
+                if(tag === 'nextround') { state.round++; state.enemyIdx++; loadEnemy(); }
             }
-            if(state.curEnemy.curHP <= 0) forceNext();
-            else { updateEnemyUI(); updateUI(); }
+
+            state.selectedCard.el.remove();
+            cancelSelect();
+
+            if(state.curEnemy && state.curEnemy.curHP <= 0) {
+                state.enemyIdx++;
+                state.round++; // 敵人死後進入下一輪 Round 才增加
+                loadEnemy();
+            }
+            updateUI();
         }
 
-        function forceNext() {
-            state.enemyIdx++; state.round++; state.energy = state.maxEnergy;
-            loadNextEnemy(); draw(5); updateUI();
-        }
+        document.getElementById('end-action-btn').onclick = () => {
+            state.energy = state.maxEnergy;
+            drawCards(5);
+            updateUI();
+        };
 
-        function updateUI() {
-            document.getElementById('energy-val').innerText = `${state.energy}/${state.maxEnergy}`;
-            document.getElementById('round-val').innerText = state.round;
-            document.getElementById('player-hp-text').innerText = `${state.playerHP} / ${state.playerMaxHP}`;
-            document.getElementById('player-hp-fill').style.width = state.playerHP + '%';
-        }
-
-        document.getElementById('end-turn-btn').onclick = () => { state.energy = state.maxEnergy; draw(5); updateUI(); };
-        document.body.onclick = cancel;
-        window.onload = start;
+        document.body.onclick = cancelSelect;
+        window.onload = init;
     </script>
 </body>
 </html>

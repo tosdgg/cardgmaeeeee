@@ -2,456 +2,286 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steampunk Card Duel</title>
+    <title>Steampunk Card Engine - Full HUD</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
-
     <style>
-        /* --- 1. 蒸氣龐克基礎設定 --- */
         :root {
-            --brass: #b5a642;       /* 黃銅色 */
-            --bronze: #cd7f32;      /* 青銅色 */
-            --leather: #4a3c31;     /* 皮革棕 */
-            --parchment: #eaddcf;   /* 羊皮紙 */
-            --dark-metal: #2c2c2c;  /* 深色金屬 */
-            --glow: #ffae00;        /* 蒸氣燈光暈 */
+            --brass: #b5a642; --bronze: #cd7f32; --leather: #4a3c31;
+            --parchment: #eaddcf; --dark-metal: #2c2c2c; --glow: #ffae00;
+            --steam-blue: #00f3ff;
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #1a1510;
-            /* 模擬生鏽金屬或舊皮革的背景紋理 */
-            background-image: 
-                radial-gradient(circle at 50% 50%, #2c221b 0%, #0f0c0a 100%);
-            color: var(--parchment);
-            font-family: 'IM Fell English SC', serif;
-            overflow: hidden;
-            height: 100vh;
-            user-select: none;
+            margin: 0; padding: 0; background: #1a1510;
+            color: var(--parchment); font-family: 'IM Fell English SC', serif;
+            overflow: hidden; height: 100vh;
         }
 
-        /* --- 2. 戰鬥介面容器 (包含左側儀表與右側血條) --- */
-        #top-hud {
-            position: absolute;
-            top: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 20px; /* 儀表與血條的距離 */
+        /* --- 頂部：敵人區域 --- */
+        #enemy-hud {
+            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 20px;
         }
 
-        /* 左側儀表板 (回合與剩餘敵人) */
-        .status-panel {
-            width: 100px;
-            background: var(--leather);
-            border: 4px solid var(--bronze);
-            border-radius: 10px;
-            padding: 10px;
-            text-align: center;
-            box-shadow: 
-                inset 0 0 10px #000,
-                0 0 15px rgba(0,0,0,0.8);
-            position: relative;
-        }
-        
-        /* 裝飾用的螺絲釘效果 */
-        .status-panel::after, .status-panel::before {
-            content: '';
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: var(--brass);
-            border-radius: 50%;
-            box-shadow: 1px 1px 2px #000;
-        }
-        .status-panel::before { top: 5px; left: 5px; }
-        .status-panel::after { bottom: 5px; right: 5px; }
-
-        .status-item {
-            margin-bottom: 8px;
-            border-bottom: 1px dashed var(--brass);
-            padding-bottom: 5px;
-        }
-        .status-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
+        /* --- 中間：玩家血量 (位於手牌上方) --- */
+        #player-status-area {
+            position: absolute; bottom: 340px; left: 50%; transform: translateX(-50%);
+            width: 400px; text-align: center;
         }
 
-        .status-label {
-            font-size: 0.8rem;
-            color: #aaa;
-            display: block;
+        .hp-bar {
+            width: 100%; height: 20px; background: #111; border: 2px solid #555;
+            border-radius: 10px; overflow: hidden; margin-top: 5px;
         }
-        .status-value {
-            font-family: 'Rye', cursive;
-            font-size: 1.5rem;
-            color: var(--glow);
-            text-shadow: 0 0 5px rgba(255, 174, 0, 0.5);
+        .hp-fill-enemy { background: linear-gradient(180deg, #ff4444, #880000); width: 100%; transition: 0.3s; }
+        .hp-fill-player { background: linear-gradient(180deg, #44ff44, #008800); width: 100%; transition: 0.3s; }
+
+        /* --- 左側：費用與回合儀表 --- */
+        #left-gauges {
+            position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 20px;
         }
 
-        /* 右側敵人血條區域 */
-        .enemy-frame {
-            width: 350px;
-            background: var(--dark-metal);
-            border: 4px ridge var(--brass);
-            padding: 15px;
-            position: relative;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        .gauge-box {
+            width: 120px; background: var(--leather); border: 4px solid var(--bronze);
+            border-radius: 15px; padding: 15px; text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         }
 
-        .enemy-frame::before {
-            content: "STEAM_ENGINE_MK.IV"; /* 敵人名稱 */
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #000;
-            color: var(--bronze);
-            padding: 2px 10px;
-            font-family: 'Rye', cursive;
-            border: 1px solid var(--bronze);
-            font-size: 0.9rem;
+        .energy-circle {
+            font-family: 'Rye'; font-size: 2.5rem; color: var(--steam-blue);
+            text-shadow: 0 0 10px var(--steam-blue);
         }
 
-        .hp-bar-casing {
-            width: 100%;
-            height: 25px;
-            background: #111;
-            border: 2px solid #555;
-            border-radius: 15px;
-            overflow: hidden;
-            margin-top: 5px;
-            position: relative;
+        /* --- 結束回合按鈕 --- */
+        #end-turn-btn {
+            position: absolute; right: 30px; top: 50%; transform: translateY(-50%);
+            width: 100px; height: 100px; border-radius: 50%;
+            background: var(--bronze); border: 5px double var(--brass);
+            font-family: 'Rye'; cursor: pointer; color: white;
         }
 
-        .hp-bar-fill {
-            width: 100%; /* 初始血量 */
-            height: 100%;
-            background: linear-gradient(180deg, #d93d3d 0%, #8a1c1c 100%);
-            transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-            position: relative;
-        }
-        
-        /* 血條上的光澤 */
-        .hp-bar-fill::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 50%;
-            background: rgba(255,255,255,0.2);
-        }
-
-        /* --- 3. 手牌區域 --- */
+        /* --- 手牌區 --- */
         #hand-area {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            height: 300px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-end; /* 讓卡片底部對齊 */
-            gap: -20px; /* 讓卡片稍微重疊，更有手牌感 */
-            pointer-events: none;
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; height: 300px; display: flex; justify-content: center;
+            align-items: flex-end; pointer-events: none;
         }
 
-        /* --- 4. 卡牌樣式 (羊皮紙與機械風格) --- */
         .card {
-            width: 170px;
-            height: 250px;
-            background: var(--parchment);
-            color: #332211;
-            border: 6px solid var(--bronze);
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            transition: transform 0.2s, box-shadow 0.2s, z-index 0s;
-            pointer-events: auto;
-            cursor: grab;
-            box-shadow: 3px 3px 10px rgba(0,0,0,0.6);
-            flex-shrink: 0;
-            overflow: hidden;
+            width: 160px; height: 240px; background: var(--parchment); color: #221100;
+            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -10px;
+            pointer-events: auto; cursor: grab; transition: 0.2s; position: relative;
         }
-
-        /* 模擬卡牌紋理 */
-        .card::before {
-            content: '';
-            position: absolute;
-            top:0; left:0; width:100%; height:100%;
-            background-image: url('https://www.transparenttextures.com/patterns/aged-paper.png');
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        .card:hover {
-            transform: translateY(-40px) scale(1.1);
-            z-index: 100;
-            box-shadow: 0 0 15px var(--glow);
-            border-color: var(--brass);
-        }
-
-        /* 卡片內容佈局 */
-        .card-header {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 2px solid var(--leather);
-            background: rgba(181, 166, 66, 0.2);
-            padding: 0 10px;
-            z-index: 1;
-        }
-
-        .card-name {
-            font-family: 'Rye', cursive;
-            font-size: 1.3rem;
-            text-align: center;
-            line-height: 1.1;
-        }
-
-        .card-body {
-            flex: 2;
-            padding: 15px;
-            font-family: 'IM Fell English SC', serif;
-            font-size: 1rem;
-            font-weight: bold;
-            display: flex;
-            align-items: center; /* 垂直置中 */
-            justify-content: center;
-            text-align: center;
-            z-index: 1;
-        }
-
-        /* 卡牌左上角的費用/齒輪 */
+        .card:hover { transform: translateY(-40px) scale(1.1); z-index: 100; border-color: var(--steam-blue); }
         .card-cost {
-            position: absolute;
-            top: -5px;
-            left: -5px;
-            width: 35px;
-            height: 35px;
-            background: var(--dark-metal);
-            color: var(--glow);
-            border: 2px solid var(--brass);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Rye', cursive;
-            z-index: 2;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            position: absolute; top: -10px; left: -10px; width: 35px; height: 35px;
+            background: var(--dark-metal); color: var(--steam-blue); border: 2px solid var(--steam-blue);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye';
         }
-
-        /* 拖曳中的特殊樣式 */
-        .dragging {
-            position: fixed !important;
-            z-index: 9999 !important;
-            opacity: 0.9;
-            /* 關鍵：縮小並旋轉一點，讓玩家能看清滑鼠指向的目標 */
-            transform: scale(0.6) rotate(5deg) !important; 
-            cursor: grabbing !important;
-            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
-            pointer-events: none; /* 關鍵：讓滑鼠事件穿透卡牌，直接偵測下方的敵人 */
-        }
-
-        /* 視覺回饋：當拖曳到敵人上方時 */
-        .enemy-hovered {
-            border-color: #ff3333 !important;
-            box-shadow: 0 0 20px #ff3333 !important;
-            transform: scale(1.02);
-        }
-
+        .dragging { position: fixed !important; transform: scale(0.6) !important; pointer-events: none; z-index: 1000; }
+        .target-hover { box-shadow: 0 0 30px var(--steam-blue) !important; border-color: var(--steam-blue) !important; }
     </style>
 </head>
 <body>
 
-    <div id="top-hud">
-        <div class="status-panel">
-            <div class="status-item">
-                <span class="status-label">ROUND</span>
-                <span class="status-value">1</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">ENEMIES</span>
-                <span class="status-value">3</span>
-            </div>
+    <div id="enemy-hud">
+        <div class="gauge-box" style="width: 80px;">
+            <div style="font-size:0.7rem">ROUND</div>
+            <div id="round-val" style="font-family:'Rye'; font-size:1.5rem">1</div>
         </div>
-
-        <div class="enemy-frame" id="target-zone">
-            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                <span style="color:var(--bronze);">INTEGRITY</span>
-                <span id="hp-text">100%</span>
+        <div class="gauge-box" id="enemy-zone" style="width: 350px;">
+            <div style="display:flex; justify-content:space-between">
+                <span id="enemy-name" style="font-family:'Rye'">ENEMIZING...</span>
+                <span id="enemy-hp-text">100/100</span>
             </div>
-            <div class="hp-bar-casing">
-                <div class="hp-bar-fill" style="width: 100%;"></div>
-            </div>
+            <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill-enemy" style="height:100%"></div></div>
         </div>
     </div>
 
-    <div id="hand-area">
-        <div style="color:var(--brass); font-size:1.5rem; margin-bottom:50px;">
-            Initializing Steam Core...
+    <div id="left-gauges">
+        <div class="gauge-box">
+            <div style="font-size:0.8rem">STEAM ENERGY</div>
+            <div id="energy-val" class="energy-circle">3 / 3</div>
+            <div style="font-size:0.6rem; color:var(--bronze)">PRESSURIZED</div>
+        </div>
+        <div class="gauge-box">
+            <div style="font-size:0.8rem">ENEMIES LEFT</div>
+            <div id="enemy-count" style="font-family:'Rye'; font-size:1.5rem">0</div>
         </div>
     </div>
+
+    <div id="player-status-area">
+        <div style="display:flex; justify-content:space-between; font-family:'Rye'; font-size:0.9rem">
+            <span>PLAYER_INTEGRITY</span>
+            <span id="player-hp-text">100 / 100</span>
+        </div>
+        <div class="hp-bar"><div id="player-hp-fill" class="hp-fill-player" style="height:100%"></div></div>
+    </div>
+
+    <button id="end-turn-btn">NEXT<br>GEAR</button>
+    <div id="hand-area"></div>
 
     <script>
-        // --- 模擬數據 (若有真實 URL 則替換此處) ---
-        // 您的地圖 GID 是 754158994，請建立新分頁存放卡牌並使用該分頁的 GID
-        // const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/您的ID/pub?gid=您的卡牌GID&single=true&output=csv';
-        
-        const MOCK_CSV = `Name,Effect
-蒸氣噴射,造成 15 點燙傷
-黃銅重擊,造成 10 點物理傷害
-齒輪護盾,獲得 10 點護甲
-緊急修復,恢復 5 點生命值
-過載運轉,下回合能量 +2
-精密射擊,造成 20 點傷害`;
+        // --- 遊戲狀態管理 ---
+        let state = {
+            playerHP: 100,
+            playerMaxHP: 100,
+            energy: 3,
+            maxEnergy: 3,
+            round: 1,
+            enemyIdx: 0,
+            currentEnemyHP: 0,
+            enemies: [],
+            allCards: []
+        };
+
+        // 模擬數據
+        const MOCK_CARDS = `Name,Effect,Cost
+重型扳手,造成 [#dmg 25] 點傷害,1
+鍋爐修復,自我修復 [#heal 20] 點,2
+蒸氣爆發,造成 [#dmg 60] 但自己過熱 [#heal -15],3
+抽牌指令,從牌堆 [#draw 1] 資源,1`;
+
+        const MOCK_ENEMIES = `Name,HP
+自動巡邏機,60
+發條衛兵,150
+蒸汽堡壘,400`;
 
         document.addEventListener('DOMContentLoaded', () => {
-            // 這裡模擬讀取 CSV
-            Papa.parse(MOCK_CSV, {
-                download: false, // 若用 URL 改為 true
-                header: true,
-                complete: function(results) {
-                    renderHand(results.data);
-                }
-            });
+            loadData();
+            document.getElementById('end-turn-btn').onclick = endTurn;
         });
 
-        function renderHand(cardsData) {
-            const handContainer = document.getElementById('hand-area');
-            handContainer.innerHTML = '';
+        function loadData() {
+    // 1. 貼上你的卡牌 CSV 連結
+    const cardUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv"; 
+    
+    // 2. 貼上你的敵人 CSV 連結
+    const enemyUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8//pub?gid=322780304&output=csv";
 
-            cardsData.forEach((card, index) => {
-                if(!card.Name) return;
+    // 使用 Papa.parse 讀取真實網路資料
+    Papa.parse(cardUrl, { 
+        download: true, // 這裡一定要改為 true
+        header: true, 
+        complete: res => { 
+            state.allCards = res.data; 
+            drawCards(5); 
+        }
+    });
 
+    Papa.parse(enemyUrl, { 
+        download: true, // 這裡一定要改為 true
+        header: true, 
+        complete: res => { 
+            state.enemies = res.data; 
+            state.enemyIdx = 0;
+            spawnEnemy();
+        }
+    });
+}
+
+        function spawnEnemy() {
+            const e = state.enemies[state.enemyIdx];
+            if(!e) return alert("Victory!");
+            state.currentEnemyHP = parseInt(e.HP);
+            state.currentEnemyMaxHP = parseInt(e.HP);
+            document.getElementById('enemy-name').innerText = e.Name;
+            document.getElementById('enemy-count').innerText = state.enemies.length - state.enemyIdx;
+            updateUI();
+        }
+
+        function drawCards(num) {
+            const hand = document.getElementById('hand-area');
+            for(let i=0; i<num; i++) {
+                const data = state.allCards[Math.floor(Math.random()*state.allCards.length)];
+                if(!data.Name) continue;
                 const cardEl = document.createElement('div');
                 cardEl.className = 'card';
-                cardEl.dataset.index = index; // 標記索引
-                
-                cardEl.innerHTML = `
-                    <div class="card-cost">${Math.floor(Math.random()*3)+1}</div>
-                    <div class="card-header">
-                        <div class="card-name">${card.Name}</div> </div>
-                    <div class="card-body">
-                        ${card.Effect} </div>
-                `;
-
-                addDragLogic(cardEl);
-                handContainer.appendChild(cardEl);
-            });
-        }
-
-        // --- 優化後的拖曳邏輯 ---
-        function addDragLogic(el) {
-            
-            el.addEventListener('mousedown', (e) => {
-                e.preventDefault(); // 防止選取文字
-
-                // 1. 計算卡牌中心點與滑鼠的偏移量，讓拿起時更自然
-                const rect = el.getBoundingClientRect();
-                const shiftX = e.clientX - rect.left;
-                const shiftY = e.clientY - rect.top;
-
-                // 2. 設置拖曳狀態
-                el.classList.add('dragging');
-                
-                // 3. 初始移動一次，並稍微向上偏移 (Offset) 讓卡牌顯示在游標上方
-                // 這樣滑鼠尖端就可以當作瞄準點
-                moveAt(e.pageX, e.pageY);
-
-                function moveAt(pageX, pageY) {
-                    // 這裡的 -120 是為了讓卡片顯示在滑鼠「上方」一點的位置
-                    // 因為我們有 scale(0.6)，所以視覺上需要調整位置
-                    el.style.left = pageX - (rect.width / 2) + 'px';
-                    el.style.top = pageY - (rect.height / 2) - 50 + 'px'; 
-
-                    checkHover(); // 檢查是否懸停在敵人上
-                }
-
-                function onMouseMove(event) {
-                    moveAt(event.pageX, event.pageY);
-                }
-
-                // 4. 偵測放置 (Drop)
-                document.addEventListener('mousemove', onMouseMove);
-                
-                // 使用 once: true 確保事件只觸發一次，避免重複綁定
-                document.addEventListener('mouseup', function onMouseUp(e) {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    
-                    // 檢查最終位置
-                    const enemyZone = document.getElementById('target-zone');
-                    // 由於 dragging 類別有 pointer-events: none，我們可以使用 elementFromPoint
-                    // 它可以穿透卡牌偵測到底下的元素
-                    const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
-                    
-                    // 判定是否打出卡牌 (檢查滑鼠下的元素是否包含在 enemyZone 內)
-                    if (enemyZone.contains(elementBelow) || elementBelow === enemyZone) {
-                        triggerAttack(el);
-                    } else {
-                        // 復原
-                        returnCard(el);
-                    }
-                    
-                    // 清除敵人發光特效
-                    enemyZone.classList.remove('enemy-hovered');
-
-                }, { once: true });
-            });
-        }
-
-        // 檢查懸停狀態 (讓敵人發光)
-        function checkHover() {
-            const enemyZone = document.getElementById('target-zone');
-            // 隱藏目前拖曳的卡牌以偵測下方元素 (雖然 CSS pointer-events: none 已處理，但雙重保險)
-            const elBelow = document.elementFromPoint(event.clientX, event.clientY);
-            
-            if (enemyZone.contains(elBelow) || elBelow === enemyZone) {
-                enemyZone.classList.add('enemy-hovered');
-            } else {
-                enemyZone.classList.remove('enemy-hovered');
+                cardEl.innerHTML = `<div class="card-cost">${data.Cost}</div>
+                                    <div style="font-family:'Rye';padding:10px;text-align:center;border-bottom:1px solid #444">${data.Name}</div>
+                                    <div style="padding:15px;font-size:0.85rem;text-align:center">${data.Effect}</div>`;
+                addDrag(cardEl, data);
+                hand.appendChild(cardEl);
             }
         }
 
-        function returnCard(el) {
-            el.classList.remove('dragging');
-            el.style.position = '';
-            el.style.left = '';
-            el.style.top = '';
-            el.style.width = ''; 
-            el.style.transform = '';
+        function addDrag(el, data) {
+            el.onmousedown = (e) => {
+                const cost = parseInt(data.Cost);
+                if(state.energy < cost) {
+                    el.style.boxShadow = "0 0 20px red";
+                    setTimeout(()=> el.style.boxShadow = "", 300);
+                    return; // 能量不足不能拖
+                }
+
+                const rect = el.getBoundingClientRect();
+                el.classList.add('dragging');
+
+                const move = (ev) => {
+                    el.style.left = ev.pageX - rect.width/2 + 'px';
+                    el.style.top = ev.pageY - rect.height/2 - 50 + 'px';
+                    const target = document.elementFromPoint(ev.clientX, ev.clientY);
+                    if(document.getElementById('enemy-zone').contains(target)) 
+                        document.getElementById('enemy-zone').classList.add('target-hover');
+                    else document.getElementById('enemy-zone').classList.remove('target-hover');
+                };
+
+                document.onmousemove = move;
+                document.onmouseup = (ev) => {
+                    document.onmousemove = null;
+                    const target = document.elementFromPoint(ev.clientX, ev.clientY);
+                    if(document.getElementById('enemy-zone').contains(target)) {
+                        playCard(data);
+                        el.remove();
+                    } else {
+                        el.classList.remove('dragging'); el.style.position = '';
+                    }
+                    document.getElementById('enemy-zone').classList.remove('target-hover');
+                    document.onmouseup = null;
+                };
+            };
         }
 
-        function triggerAttack(cardEl) {
-            // 視覺特效：卡牌縮小消失
-            cardEl.style.transform = 'scale(0)';
-            cardEl.style.opacity = '0';
-            
-            setTimeout(() => {
-                cardEl.remove(); // 移除 DOM
-            }, 300);
+        function playCard(data) {
+            state.energy -= parseInt(data.Cost);
+            // 標籤解析
+            const regex = /\[#(\w+)\s+(-?\d+)\]/g;
+            let match;
+            while ((match = regex.exec(data.Effect)) !== null) {
+                const val = parseInt(match[2]);
+                if(match[1] === 'dmg') state.currentEnemyHP -= val;
+                if(match[1] === 'heal') {
+                    state.playerHP += val;
+                    if(state.playerHP > state.playerMaxHP) state.playerHP = state.playerMaxHP;
+                }
+            }
+            if(state.currentEnemyHP <= 0) { state.enemyIdx++; spawnEnemy(); }
+            updateUI();
+        }
 
-            // 扣血邏輯
-            const hpFill = document.querySelector('.hp-bar-fill');
-            const hpText = document.getElementById('hp-text');
-            
-            // 取得當前寬度%
-            let currentWidth = parseFloat(hpFill.style.width) || 100;
-            let dmg = Math.floor(Math.random() * 20) + 10; // 隨機傷害
-            let newWidth = Math.max(0, currentWidth - dmg);
-            
-            hpFill.style.width = newWidth + '%';
-            hpText.innerText = Math.round(newWidth) + '%';
+        function endTurn() {
+            state.round++;
+            state.energy = state.maxEnergy; // 恢復能量
+            document.getElementById('hand-area').innerHTML = '';
+            drawCards(5);
+            updateUI();
+        }
 
-            // 撞擊震動特效
-            const enemyFrame = document.querySelector('.enemy-frame');
-            enemyFrame.style.transform = 'translate(5px, 5px)';
-            setTimeout(() => enemyFrame.style.transform = 'translate(-5px, -5px)', 50);
-            setTimeout(() => enemyFrame.style.transform = 'translate(0, 0)', 100);
+        function updateUI() {
+            document.getElementById('energy-val').innerText = `${state.energy} / ${state.maxEnergy}`;
+            document.getElementById('round-val').innerText = state.round;
+            
+            // 敵人 HP
+            const ePct = Math.max(0, (state.currentEnemyHP / state.currentEnemyMaxHP) * 100);
+            document.getElementById('enemy-hp-fill').style.width = ePct + '%';
+            document.getElementById('enemy-hp-text').innerText = `${state.currentEnemyHP} / ${state.currentEnemyMaxHP}`;
+
+            // 玩家 HP
+            const pPct = Math.max(0, (state.playerHP / state.playerMaxHP) * 100);
+            document.getElementById('player-hp-fill').style.width = pPct + '%';
+            document.getElementById('player-hp-text').innerText = `${state.playerHP} / ${state.playerMaxHP}`;
         }
     </script>
 </body>

@@ -2,14 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Steampunk Duel v3.5 - Live Data</title>
+    <title>Steampunk Duel v4.5 - Stable Data</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
         :root {
             --brass: #b5a642; --bronze: #cd7f32; --leather: #4a3c31;
-            --parchment: #eaddcf; --dark-metal: #2c2c2c; --glow: #ffae00;
-            --steam-blue: #00f3ff;
+            --parchment: #eaddcf; --dark-metal: #2c2c2c; --steam-blue: #00f3ff;
+            --hp-red: #d93d3d; --hp-green: #44ff44;
         }
 
         body {
@@ -18,275 +18,247 @@
             overflow: hidden; height: 100vh;
         }
 
-        /* --- 敵人 1對1 區域 --- */
-        #enemy-hud {
-            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+        /* --- 戰鬥佈局 --- */
+        #battle-scene {
+            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
             display: flex; align-items: center; gap: 20px;
         }
 
-        .enemy-box {
-            width: 380px; background: var(--dark-metal); border: 4px ridge var(--brass);
-            padding: 20px; position: relative; transition: border-color 0.2s;
+        #round-box {
+            width: 70px; height: 70px; background: var(--leather); border: 3px solid var(--bronze);
+            border-radius: 10px; text-align: center; display: flex; flex-direction: column; justify-content: center;
         }
 
-        .type-1 { border-color: var(--bronze); }
-        .type-2 { border-color: #c0c0c0; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
-        .type-3 { border-color: var(--glow); box-shadow: 0 0 20px rgba(255,174,0,0.4); }
-
-        .row-info-label { font-size: 0.7rem; color: #888; font-family: monospace; }
-
-        /* --- 左側狀態儀表 --- */
-        #left-stats {
-            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
-            display: flex; flex-direction: column; gap: 15px;
+        .enemy-unit {
+            width: 400px; background: var(--dark-metal); border: 4px ridge var(--brass);
+            padding: 20px; position: relative; cursor: pointer; transition: 0.2s;
         }
+        .enemy-unit:hover { border-color: var(--steam-blue); }
 
-        .stat-gauge {
-            width: 110px; background: var(--leather); border: 3px solid var(--bronze);
-            border-radius: 12px; padding: 10px; text-align: center;
+        /* 抖動動畫：根據類型強度不同 */
+        @keyframes shake-light { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(1px,1px); } 75% { transform: translate(-1px,-1px); } }
+        @keyframes shake-heavy { 0%, 100% { transform: translate(0,0); } 20% { transform: translate(-3px,2px); } 60% { transform: translate(3px,-2px); } }
+        
+        .shake-1 { animation: shake-light 0.8s infinite; }
+        .shake-2 { animation: shake-light 0.3s infinite; border-color: #aaa; }
+        .shake-3 { animation: shake-heavy 0.15s infinite; border-color: #ffd700; box-shadow: 0 0 15px rgba(255,215,0,0.5); }
+
+        /* --- 玩家區域 --- */
+        #player-hub {
+            position: absolute; bottom: 310px; left: 50%; transform: translateX(-50%);
+            width: 420px; text-align: center; cursor: pointer; padding: 15px;
+            border-radius: 10px; transition: 0.3s;
         }
+        .target-active { background: rgba(0, 243, 255, 0.15); box-shadow: 0 0 20px var(--steam-blue); }
 
-        /* --- 手牌與卡牌 --- */
+        /* --- 手牌 --- */
         #hand-area {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; height: 260px; display: flex; justify-content: center;
-            align-items: flex-end; pointer-events: none;
+            width: 90%; display: flex; justify-content: center; gap: 15px; pointer-events: none;
         }
 
         .card {
-            width: 150px; height: 220px; background: var(--parchment); color: #221100;
-            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -10px;
-            pointer-events: auto; cursor: grab; position: relative;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            width: 150px; height: 210px; background: var(--parchment); color: #221100;
+            border: 4px solid var(--bronze); border-radius: 10px; pointer-events: auto;
+            cursor: pointer; position: relative; transition: 0.2s;
         }
-
-        .card-row-tag {
-            position: absolute; bottom: 8px; right: 12px; 
-            font-size: 0.7rem; color: #775533; font-family: monospace;
-        }
-
-        .card-cost-tag {
-            position: absolute; top: -12px; left: -12px; width: 38px; height: 38px;
-            background: var(--dark-metal); color: var(--steam-blue);
-            border: 2px solid var(--steam-blue); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem;
-        }
-
-        .dragging {
-            position: fixed !important; z-index: 9999 !important;
-            pointer-events: none !important; transform: scale(0.8) !important;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-        }
-
-        .hp-bar { width: 100%; height: 14px; background: #000; border-radius: 7px; overflow: hidden; margin: 8px 0; }
-        .hp-fill { height: 100%; transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); background: #d93d3d; }
+        .card.is-selected { transform: translateY(-40px); border-color: var(--steam-blue); box-shadow: 0 0 25px var(--steam-blue); }
         
-        #end-action-btn {
-            position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
-            width: 100px; height: 100px; border-radius: 50%;
-            background: radial-gradient(circle, var(--bronze), var(--leather));
-            border: 5px double var(--brass); color: white; font-family: 'Rye'; cursor: pointer;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        .card-row-id { position: absolute; bottom: 6px; right: 10px; font-size: 0.8rem; font-weight: bold; opacity: 0.5; }
+        .card-cost {
+            position: absolute; top: -12px; left: -12px; width: 36px; height: 36px;
+            background: var(--dark-metal); color: var(--steam-blue); border: 2px solid var(--steam-blue);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye';
         }
-        #end-action-btn:active { transform: translateY(-50%) scale(0.95); }
+
+        .hp-bar { width: 100%; height: 18px; background: #000; border-radius: 9px; overflow: hidden; margin: 8px 0; border: 1px solid #444; }
+        .hp-fill { height: 100%; transition: 0.4s; }
+
+        #energy-display { position: absolute; left: 30px; bottom: 30px; text-align: center; }
+
+        #end-turn-btn {
+            position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
+            width: 90px; height: 90px; border-radius: 50%; background: var(--bronze);
+            border: 4px double var(--brass); color: white; cursor: pointer; font-family: 'Rye';
+        }
     </style>
 </head>
 <body>
 
-    <div id="enemy-hud">
-        <div class="enemy-box" id="active-enemy-zone">
-            <div class="row-info-label" id="enemy-row-display">Sheet Row: --</div>
-            <div id="enemy-name" style="font-family:'Rye'; font-size:1.6rem; color:var(--bronze)">CONNECTING...</div>
-            <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill" style="width: 100%"></div></div>
-            <div id="enemy-hp-text" style="text-align:right; font-size:0.85rem; font-weight:bold">-- / --</div>
+    <div id="battle-scene">
+        <div id="round-box">
+            <div style="font-size:0.6rem">ROUND</div>
+            <div id="round-val" style="font-family:'Rye'; font-size:1.8rem; color:var(--hp-green)">1</div>
+        </div>
+        <div class="enemy-unit" id="target-enemy">
+            <div id="enemy-row-tag" style="font-size:0.7rem; color:#888">#--</div>
+            <div id="enemy-name" style="font-family:'Rye'; font-size:1.6rem">SCANNING...</div>
+            <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill" style="background:var(--hp-red); width:0%"></div></div>
+            <div id="enemy-hp-text" style="text-align:right; font-size:0.8rem">0 / 0</div>
         </div>
     </div>
 
-    <div id="left-stats">
-        <div class="stat-gauge">
-            <div style="font-size:0.7rem">ENERGY</div>
-            <div id="energy-val" style="font-family:'Rye'; font-size:2.2rem; color:var(--steam-blue)">--</div>
+    <div id="player-hub">
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px;">
+            <span>USER_INTEGRITY</span>
+            <span id="player-hp-text">100 / 100</span>
         </div>
-        <div class="stat-gauge">
-            <div style="font-size:0.7rem">LEFT</div>
-            <div id="enemies-left" style="font-family:'Rye'; font-size:2rem">--</div>
-        </div>
-        <div class="stat-gauge">
-            <div style="font-size:0.7rem">ROUND</div>
-            <div id="round-val" style="font-family:'Rye'; font-size:1.6rem; color:var(--glow)">1</div>
-        </div>
+        <div class="hp-bar"><div id="player-hp-fill" class="hp-fill" style="background:var(--hp-green); width:100%"></div></div>
     </div>
 
-    <button id="end-action-btn">END<br>ACTION</button>
+    <div id="energy-display">
+        <div style="font-size:0.7rem">STEAM PRESSURE</div>
+        <div id="energy-val" style="font-family:'Rye'; font-size:2.5rem; color:var(--steam-blue)">3/3</div>
+    </div>
+
+    <button id="end-turn-btn">VENT<br>STEAM</button>
     <div id="hand-area"></div>
 
     <script>
-        const BASE_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
-        const ENEMY_GID = "322780304";
-        const CARD_GID = "0";
+        const CSV_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
+        const GID_ENEMY = "322780304";
+        const GID_CARD = "0";
 
         let state = {
-            playerHP: 100,
-            energy: 3,
-            maxEnergy: 3,
+            playerHP: 100, playerMaxHP: 100,
+            energy: 3, maxEnergy: 3,
             round: 1,
-            allCards: [],
-            enemyPool: [],
-            currentEnemy: null,
-            enemyIndex: 0
+            cards: [], enemies: [],
+            curEnemy: null, enemyIdx: 0,
+            selectedCard: null
         };
 
-        // 初始化：讀取 Google Sheets
-        async function initGame() {
-            // 讀取卡牌 (GID: 0)
-            Papa.parse(`${BASE_CSV_URL}&gid=${CARD_GID}`, {
-                download: true, header: true, skipEmptyLines: true,
-                complete: (results) => {
-                    state.allCards = results.data
-                        .filter(row => row.Name) // 確保有名字
-                        .map((r, i) => ({...r, row: i + 2}));
-                    drawCards(5);
-                    updateUI();
+        async function start() {
+            // 讀取敵人 - 使用數組索引避免標題名稱錯誤
+            Papa.parse(`${CSV_BASE}&gid=${GID_ENEMY}`, {
+                download: true, header: true, complete: (res) => {
+                    state.enemies = res.data.filter(r => Object.values(r)[0]).map((r, i) => {
+                        const vals = Object.values(r);
+                        return { name: vals[0], hp: parseInt(vals[1])||10, type: parseInt(vals[2])||1, row: i+2 };
+                    });
+                    nextEnemy();
                 }
             });
 
-            // 讀取敵人 (GID: 322780304)
-            Papa.parse(`${BASE_CSV_URL}&gid=${ENEMY_GID}`, {
-                download: true, header: true, skipEmptyLines: true,
-                complete: (results) => {
-                    state.enemyPool = results.data
-                        .filter(row => row.Name)
-                        .map((r, i) => ({...r, row: i + 2}));
-                    loadEnemy();
+            // 讀取卡牌
+            Papa.parse(`${CSV_BASE}&gid=${GID_CARD}`, {
+                download: true, header: true, complete: (res) => {
+                    state.cards = res.data.filter(r => Object.values(r)[0]).map((r, i) => {
+                        const vals = Object.values(r);
+                        return { name: vals[0], effect: vals[1], cost: parseInt(vals[2])||0, row: i+2 };
+                    });
+                    draw(5);
+                    updateUI();
                 }
             });
         }
 
-        function loadEnemy() {
-            if (state.enemyIndex < state.enemyPool.length) {
-                let data = state.enemyPool[state.enemyIndex];
-                state.currentEnemy = { ...data, curHP: parseInt(data.HP) };
+        function nextEnemy() {
+            if (state.enemyIdx < state.enemies.length) {
+                const data = state.enemies[state.enemyIdx];
+                state.curEnemy = { ...data, curHP: data.hp };
+                const box = document.getElementById('target-enemy');
+                box.className = `enemy-unit shake-${data.type}`;
                 updateEnemyUI();
             } else {
-                document.getElementById('enemy-name').innerText = "VICTORY!";
+                document.getElementById('enemy-name').innerText = "ALL CLEAR";
             }
         }
 
         function updateEnemyUI() {
-            if(!state.currentEnemy) return;
-            const en = state.currentEnemy;
-            document.getElementById('enemy-name').innerText = en.Name;
-            document.getElementById('enemy-row-display').innerText = `Sheet Row: ${en.row}`;
-            document.getElementById('enemies-left').innerText = state.enemyPool.length - state.enemyIndex;
-            
-            const pct = (en.curHP / en.HP) * 100;
-            document.getElementById('enemy-hp-fill').style.width = pct + '%';
-            document.getElementById('enemy-hp-text').innerText = `${en.curHP} / ${en.HP}`;
-            
-            const zone = document.getElementById('active-enemy-zone');
-            zone.className = `enemy-box type-${en.Type || 1}`;
+            if(!state.curEnemy) return;
+            document.getElementById('enemy-name').innerText = state.curEnemy.name;
+            document.getElementById('enemy-row-tag').innerText = `#${state.curEnemy.row}`;
+            const pct = (state.curEnemy.curHP / state.curEnemy.hp) * 100;
+            document.getElementById('enemy-hp-fill').style.width = Math.max(0, pct) + '%';
+            document.getElementById('enemy-hp-text').innerText = `${state.curEnemy.curHP} / ${state.curEnemy.hp}`;
         }
 
-        function drawCards(num) {
-            const hand = document.getElementById('hand-area');
-            hand.innerHTML = '';
-            for(let i=0; i<num; i++){
-                const data = state.allCards[Math.floor(Math.random()*state.allCards.length)];
+        function draw(n) {
+            const area = document.getElementById('hand-area');
+            area.innerHTML = '';
+            for(let i=0; i<n; i++) {
+                const data = state.cards[Math.floor(Math.random()*state.cards.length)];
                 if(!data) continue;
-                
                 const el = document.createElement('div');
                 el.className = 'card';
+                // 顯示邏輯：將 [#TAG X] 轉化為純數字顯示
+                const displayEffect = data.effect.replace(/\[#\w+\s+(-?\d+)\]/g, '$1');
+                
                 el.innerHTML = `
-                    <div class="card-cost-tag">${data.Cost}</div>
-                    <div style="font-family:'Rye'; padding:15px; text-align:center; font-size:1.1rem; border-bottom:1px solid #ddd">${data.Name}</div>
-                    <div style="padding:15px; font-size:0.9rem; text-align:center; line-height:1.4">${data.Effect}</div>
-                    <div class="card-row-tag">Row:${data.row}</div>
+                    <div class="card-cost">${data.cost}</div>
+                    <div style="padding:12px; text-align:center; font-family:'Rye'; border-bottom:1px solid #ddd">${data.name}</div>
+                    <div style="padding:15px; text-align:center; font-size:1.2rem; font-weight:bold; color:var(--bronze)">${displayEffect}</div>
+                    <div class="card-row-id">${data.row}</div>
                 `;
-                bindDrag(el, data);
-                hand.appendChild(el);
+                el.onclick = (e) => { e.stopPropagation(); select(el, data); };
+                area.appendChild(el);
             }
         }
 
-        function bindDrag(el, data) {
-            el.onmousedown = (e) => {
-                if(state.energy < parseInt(data.Cost)) {
-                    el.style.borderColor = "red";
-                    setTimeout(() => el.style.borderColor = "", 300);
-                    return;
-                }
-
-                const rect = el.getBoundingClientRect();
-                el.classList.add('dragging');
-
-                function moveAt(pageX, pageY) {
-                    el.style.left = pageX - (rect.width / 2) + 'px';
-                    el.style.top = pageY - (rect.height / 2) - 20 + 'px';
-                }
-
-                moveAt(e.pageX, e.pageY);
-
-                function onMouseMove(ev) {
-                    moveAt(ev.pageX, ev.pageY);
-                    const target = document.elementFromPoint(ev.clientX, ev.clientY);
-                    const zone = document.getElementById('active-enemy-zone');
-                    if(zone.contains(target)) zone.style.borderColor = "var(--steam-blue)";
-                    else zone.style.borderColor = "";
-                }
-
-                document.addEventListener('mousemove', onMouseMove);
-
-                document.onmouseup = (ev) => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    const target = document.elementFromPoint(ev.clientX, ev.clientY);
-                    const zone = document.getElementById('active-enemy-zone');
-
-                    if(zone && zone.contains(target)) {
-                        applyEffect(data.Effect);
-                        state.energy -= parseInt(data.Cost);
-                        el.remove();
-                    } else {
-                        el.classList.remove('dragging');
-                        el.style.position = ''; el.style.left = ''; el.style.top = '';
-                    }
-                    zone.style.borderColor = "";
-                    updateUI();
-                    document.onmouseup = null;
-                };
-            };
+        function select(el, data) {
+            if(state.selectedCard?.el === el) { cancel(); return; }
+            if(state.energy < data.cost) return;
+            cancel();
+            state.selectedCard = { el, data };
+            el.classList.add('is-selected');
+            document.getElementById('player-hub').classList.add('target-active');
+            document.getElementById('target-enemy').classList.add('target-active');
         }
 
-        function applyEffect(effect) {
+        function cancel() {
+            if(state.selectedCard) state.selectedCard.el.classList.remove('is-selected');
+            state.selectedCard = null;
+            document.querySelectorAll('.target-active').forEach(e => e.classList.remove('target-active'));
+        }
+
+        // 點擊敵人
+        document.getElementById('target-enemy').onclick = () => {
+            if(state.selectedCard) {
+                apply(state.selectedCard.data, "enemy");
+                state.selectedCard.el.remove();
+                cancel();
+            }
+        };
+
+        // 點擊玩家
+        document.getElementById('player-hub').onclick = () => {
+            if(state.selectedCard) {
+                apply(state.selectedCard.data, "player");
+                state.selectedCard.el.remove();
+                cancel();
+            }
+        };
+
+        function apply(data, type) {
+            state.energy -= data.cost;
             const regex = /\[#(\w+)\s+(-?\d+)\]/g;
-            let match;
-            while ((match = regex.exec(effect)) !== null) {
-                const tag = match[1];
-                const val = parseInt(match[2]);
-                if(tag === 'dmg') state.currentEnemy.curHP -= val;
+            let m;
+            while ((m = regex.exec(data.effect)) !== null) {
+                const tag = m[1], val = parseInt(m[2]);
+                if(tag === 'dmg' && type === "enemy") state.curEnemy.curHP -= val;
                 if(tag === 'heal') state.playerHP = Math.min(100, state.playerHP + val);
-                if(tag === 'nextround') { state.round++; state.enemyIndex++; loadEnemy(); }
+                if(tag === 'nextround') { forceNext(); return; }
             }
+            if(state.curEnemy.curHP <= 0) forceNext();
+            else { updateEnemyUI(); updateUI(); }
+        }
 
-            if(state.currentEnemy.curHP <= 0) {
-                state.enemyIndex++;
-                state.round++; // 根據您的需求：消滅敵人後增加 Round
-                loadEnemy();
-            } else {
-                updateEnemyUI();
-            }
+        function forceNext() {
+            state.enemyIdx++; state.round++; state.energy = state.maxEnergy;
+            loadNextEnemy(); draw(5); updateUI();
         }
 
         function updateUI() {
             document.getElementById('energy-val').innerText = `${state.energy}/${state.maxEnergy}`;
             document.getElementById('round-val').innerText = state.round;
+            document.getElementById('player-hp-text').innerText = `${state.playerHP} / ${state.playerMaxHP}`;
+            document.getElementById('player-hp-fill').style.width = state.playerHP + '%';
         }
 
-        document.getElementById('end-action-btn').onclick = () => {
-            state.energy = state.maxEnergy;
-            drawCards(5);
-            updateUI();
-        };
-
-        window.onload = initGame;
+        document.getElementById('end-turn-btn').onclick = () => { state.energy = state.maxEnergy; draw(5); updateUI(); };
+        document.body.onclick = cancel;
+        window.onload = start;
     </script>
 </body>
 </html>

@@ -3,243 +3,335 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyberpunk Card Game Prototype</title>
+    <title>Steampunk Card Duel</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
 
     <style>
-        /* --- 1. 基礎設定 & Cyberpunk 風格 --- */
+        /* --- 1. 蒸氣龐克基礎設定 --- */
+        :root {
+            --brass: #b5a642;       /* 黃銅色 */
+            --bronze: #cd7f32;      /* 青銅色 */
+            --leather: #4a3c31;     /* 皮革棕 */
+            --parchment: #eaddcf;   /* 羊皮紙 */
+            --dark-metal: #2c2c2c;  /* 深色金屬 */
+            --glow: #ffae00;        /* 蒸氣燈光暈 */
+        }
+
         body {
             margin: 0;
             padding: 0;
-            background-color: #050505;
-            color: #00f3ff; /* 賽博青 */
-            font-family: 'Orbitron', sans-serif;
-            overflow: hidden; /* 防止拖曳時出現捲軸 */
-            height: 100vh;
+            background-color: #1a1510;
+            /* 模擬生鏽金屬或舊皮革的背景紋理 */
             background-image: 
-                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px; /* 網格背景 */
+                radial-gradient(circle at 50% 50%, #2c221b 0%, #0f0c0a 100%);
+            color: var(--parchment);
+            font-family: 'IM Fell English SC', serif;
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
         }
 
-        /* --- 2. 敵人區域 (中上) --- */
-        #enemy-area {
+        /* --- 2. 戰鬥介面容器 (包含左側儀表與右側血條) --- */
+        #top-hud {
             position: absolute;
-            top: 50px;
+            top: 40px;
             left: 50%;
             transform: translateX(-50%);
-            text-align: center;
-            width: 300px;
+            display: flex;
+            align-items: center;
+            gap: 20px; /* 儀表與血條的距離 */
         }
 
-        .enemy-hud {
-            border: 2px solid #ff0055;
+        /* 左側儀表板 (回合與剩餘敵人) */
+        .status-panel {
+            width: 100px;
+            background: var(--leather);
+            border: 4px solid var(--bronze);
+            border-radius: 10px;
             padding: 10px;
-            box-shadow: 0 0 15px #ff0055;
-            background: rgba(20, 0, 0, 0.8);
+            text-align: center;
+            box-shadow: 
+                inset 0 0 10px #000,
+                0 0 15px rgba(0,0,0,0.8);
+            position: relative;
+        }
+        
+        /* 裝飾用的螺絲釘效果 */
+        .status-panel::after, .status-panel::before {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--brass);
+            border-radius: 50%;
+            box-shadow: 1px 1px 2px #000;
+        }
+        .status-panel::before { top: 5px; left: 5px; }
+        .status-panel::after { bottom: 5px; right: 5px; }
+
+        .status-item {
+            margin-bottom: 8px;
+            border-bottom: 1px dashed var(--brass);
+            padding-bottom: 5px;
+        }
+        .status-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .status-label {
+            font-size: 0.8rem;
+            color: #aaa;
+            display: block;
+        }
+        .status-value {
+            font-family: 'Rye', cursive;
+            font-size: 1.5rem;
+            color: var(--glow);
+            text-shadow: 0 0 5px rgba(255, 174, 0, 0.5);
+        }
+
+        /* 右側敵人血條區域 */
+        .enemy-frame {
+            width: 350px;
+            background: var(--dark-metal);
+            border: 4px ridge var(--brass);
+            padding: 15px;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        .enemy-frame::before {
+            content: "STEAM_ENGINE_MK.IV"; /* 敵人名稱 */
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000;
+            color: var(--bronze);
+            padding: 2px 10px;
+            font-family: 'Rye', cursive;
+            border: 1px solid var(--bronze);
+            font-size: 0.9rem;
+        }
+
+        .hp-bar-casing {
+            width: 100%;
+            height: 25px;
+            background: #111;
+            border: 2px solid #555;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 5px;
             position: relative;
         }
 
-        .enemy-hud::before {
-            content: "TARGET_LOCKED";
-            position: absolute;
-            top: -20px;
-            left: 0;
-            font-size: 0.8rem;
-            color: #ff0055;
-        }
-
-        .hp-bar-container {
-            width: 100%;
-            height: 20px;
-            background: #330011;
-            margin-top: 10px;
-            border: 1px solid #ff0055;
-        }
-
         .hp-bar-fill {
-            width: 80%; /* 範例血量 */
+            width: 100%; /* 初始血量 */
             height: 100%;
-            background: repeating-linear-gradient(
-                45deg,
-                #ff0055,
-                #ff0055 10px,
-                #cc0044 10px,
-                #cc0044 20px
-            );
-            transition: width 0.3s ease;
+            background: linear-gradient(180deg, #d93d3d 0%, #8a1c1c 100%);
+            transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            position: relative;
+        }
+        
+        /* 血條上的光澤 */
+        .hp-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 50%;
+            background: rgba(255,255,255,0.2);
         }
 
-        /* --- 3. 手牌區域 (中下) --- */
+        /* --- 3. 手牌區域 --- */
         #hand-area {
             position: absolute;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
-            height: 280px;
+            height: 300px;
             display: flex;
             justify-content: center;
-            align-items: flex-end;
-            gap: 15px;
-            padding: 20px;
-            border-top: 1px dashed rgba(0, 243, 255, 0.3);
-            pointer-events: none; /* 讓點擊穿透容器，直接點到卡片 */
+            align-items: flex-end; /* 讓卡片底部對齊 */
+            gap: -20px; /* 讓卡片稍微重疊，更有手牌感 */
+            pointer-events: none;
         }
 
-        /* --- 4. 卡牌樣式 --- */
+        /* --- 4. 卡牌樣式 (羊皮紙與機械風格) --- */
         .card {
-            width: 160px;
-            height: 240px;
-            background: rgba(10, 10, 20, 0.9);
-            border: 2px solid #00f3ff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+            width: 170px;
+            height: 250px;
+            background: var(--parchment);
+            color: #332211;
+            border: 6px solid var(--bronze);
+            border-radius: 12px;
             display: flex;
             flex-direction: column;
-            user-select: none; /* 防止選取文字 */
+            position: relative;
+            transition: transform 0.2s, box-shadow 0.2s, z-index 0s;
+            pointer-events: auto;
             cursor: grab;
-            position: relative; /* 為了讓拖曳時變成 absolute */
-            transition: transform 0.2s, box-shadow 0.2s;
-            pointer-events: auto; /* 恢復卡片的可點擊性 */
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.6);
             flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        /* 模擬卡牌紋理 */
+        .card::before {
+            content: '';
+            position: absolute;
+            top:0; left:0; width:100%; height:100%;
+            background-image: url('https://www.transparenttextures.com/patterns/aged-paper.png');
+            opacity: 0.5;
+            pointer-events: none;
         }
 
         .card:hover {
-            transform: translateY(-20px) scale(1.05);
-            box-shadow: 0 0 20px #00f3ff;
+            transform: translateY(-40px) scale(1.1);
             z-index: 100;
+            box-shadow: 0 0 15px var(--glow);
+            border-color: var(--brass);
         }
 
-        .card:active {
-            cursor: grabbing;
-        }
-
-        /* 卡牌上半部：名稱 */
+        /* 卡片內容佈局 */
         .card-header {
             flex: 1;
-            padding: 10px;
-            border-bottom: 1px solid #00f3ff;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(0, 243, 255, 0.1);
+            border-bottom: 2px solid var(--leather);
+            background: rgba(181, 166, 66, 0.2);
+            padding: 0 10px;
+            z-index: 1;
         }
 
         .card-name {
-            font-size: 1.4rem;
-            font-weight: 700;
+            font-family: 'Rye', cursive;
+            font-size: 1.3rem;
             text-align: center;
-            text-shadow: 2px 2px 0px #000;
+            line-height: 1.1;
         }
 
-        /* 卡牌下半部：效果 */
         .card-body {
             flex: 2;
-            padding: 10px;
-            font-size: 0.9rem;
-            color: #ccc;
+            padding: 15px;
+            font-family: 'IM Fell English SC', serif;
+            font-size: 1rem;
+            font-weight: bold;
             display: flex;
-            align-items: flex-start;
+            align-items: center; /* 垂直置中 */
             justify-content: center;
             text-align: center;
-            line-height: 1.4;
+            z-index: 1;
         }
 
+        /* 卡牌左上角的費用/齒輪 */
         .card-cost {
             position: absolute;
-            top: -10px;
-            left: -10px;
-            width: 30px;
-            height: 30px;
-            background: #00f3ff;
-            color: #000;
+            top: -5px;
+            left: -5px;
+            width: 35px;
+            height: 35px;
+            background: var(--dark-metal);
+            color: var(--glow);
+            border: 2px solid var(--brass);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            box-shadow: 0 0 10px #00f3ff;
+            font-family: 'Rye', cursive;
+            z-index: 2;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
         }
 
-        /* 拖曳中的狀態 */
+        /* 拖曳中的特殊樣式 */
         .dragging {
-            position: fixed !important; /* 脫離排版 */
-            z-index: 9999;
-            pointer-events: none; /* 讓滑鼠事件穿透，以便偵測下方的目標(如敵人) */
-            opacity: 0.8;
-            transform: scale(1.1) rotate(5deg);
+            position: fixed !important;
+            z-index: 9999 !important;
+            opacity: 0.9;
+            /* 關鍵：縮小並旋轉一點，讓玩家能看清滑鼠指向的目標 */
+            transform: scale(0.6) rotate(5deg) !important; 
+            cursor: grabbing !important;
+            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+            pointer-events: none; /* 關鍵：讓滑鼠事件穿透卡牌，直接偵測下方的敵人 */
+        }
+
+        /* 視覺回饋：當拖曳到敵人上方時 */
+        .enemy-hovered {
+            border-color: #ff3333 !important;
+            box-shadow: 0 0 20px #ff3333 !important;
+            transform: scale(1.02);
         }
 
     </style>
 </head>
 <body>
 
-    <div id="enemy-area">
-        <div class="enemy-hud">
-            <h2 style="margin:0; text-shadow: 2px 2px #000;">CYBER_DEMON</h2>
-            <div style="display:flex; justify-content:space-between; margin-top:5px;">
-                <span>HP</span>
-                <span>800 / 1000</span>
+    <div id="top-hud">
+        <div class="status-panel">
+            <div class="status-item">
+                <span class="status-label">ROUND</span>
+                <span class="status-value">1</span>
             </div>
-            <div class="hp-bar-container">
-                <div class="hp-bar-fill" style="width: 80%;"></div>
+            <div class="status-item">
+                <span class="status-label">ENEMIES</span>
+                <span class="status-value">3</span>
+            </div>
+        </div>
+
+        <div class="enemy-frame" id="target-zone">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="color:var(--bronze);">INTEGRITY</span>
+                <span id="hp-text">100%</span>
+            </div>
+            <div class="hp-bar-casing">
+                <div class="hp-bar-fill" style="width: 100%;"></div>
             </div>
         </div>
     </div>
 
     <div id="hand-area">
-        <div class="loading-text">CONNECTING TO DATABASE...</div>
+        <div style="color:var(--brass); font-size:1.5rem; margin-bottom:50px;">
+            Initializing Steam Core...
+        </div>
     </div>
 
     <script>
-        // --- 設定區 ---
+        // --- 模擬數據 (若有真實 URL 則替換此處) ---
+        // 您的地圖 GID 是 754158994，請建立新分頁存放卡牌並使用該分頁的 GID
+        // const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/您的ID/pub?gid=您的卡牌GID&single=true&output=csv';
         
-        // 1. 如果你有真實的 Google Sheet URL，請填入下面。
-        // 為了演示，我這裡先放一個模擬的 CSV 資料，你可以把下一行註解掉改用真實連結。
-        // 你的地圖 GID 是 754158994，建議你開一個新分頁(Tab)專門放卡牌，假設新 GID 為 0。
-        // const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/您的試算表ID/pub?gid=您的卡牌分頁GID&single=true&output=csv';
-        
-        // --- 模擬數據 (若你尚未設定好 Sheet，會先顯示這些) ---
         const MOCK_CSV = `Name,Effect
-量子衝擊,造成 20 點穿透傷害
-奈米護盾,獲得 15 點護甲並反彈傷害
-系統超頻,本回合能量 +2 但下回合無法行動
-數據汲取,造成 5 點傷害並抽 1 張牌
-病毒植入,給予敵人 3 層中毒效果`;
+蒸氣噴射,造成 15 點燙傷
+黃銅重擊,造成 10 點物理傷害
+齒輪護盾,獲得 10 點護甲
+緊急修復,恢復 5 點生命值
+過載運轉,下回合能量 +2
+精密射擊,造成 20 點傷害`;
 
-        // --- 初始化遊戲 ---
         document.addEventListener('DOMContentLoaded', () => {
-            loadCards();
-        });
-
-        function loadCards() {
-            // 如果你有真實連結，請把 MOCK_CSV 換成 SHEET_URL，並把 download: false 改為 true
+            // 這裡模擬讀取 CSV
             Papa.parse(MOCK_CSV, {
-                download: false, // 若使用網址，這裡要改 true
-                header: true,    // 把第一列當標題 (Name, Effect)
+                download: false, // 若用 URL 改為 true
+                header: true,
                 complete: function(results) {
                     renderHand(results.data);
                 }
             });
-        }
+        });
 
         function renderHand(cardsData) {
             const handContainer = document.getElementById('hand-area');
-            handContainer.innerHTML = ''; // 清空載入文字
+            handContainer.innerHTML = '';
 
             cardsData.forEach((card, index) => {
-                // 簡單防呆：如果列是空的就跳過
                 if(!card.Name) return;
 
-                // 建立卡牌 HTML 結構
                 const cardEl = document.createElement('div');
                 cardEl.className = 'card';
-                // 為了拖曳邏輯，給個 ID
-                cardEl.id = `card-${index}`;
+                cardEl.dataset.index = index; // 標記索引
                 
-                // 填充內容 (對應欄 A 與 欄 B)
                 cardEl.innerHTML = `
                     <div class="card-cost">${Math.floor(Math.random()*3)+1}</div>
                     <div class="card-header">
@@ -248,94 +340,118 @@
                         ${card.Effect} </div>
                 `;
 
-                // 加入拖曳監聽器
                 addDragLogic(cardEl);
-
                 handContainer.appendChild(cardEl);
             });
         }
 
-        // --- 拖曳邏輯 (Drag & Drop) ---
+        // --- 優化後的拖曳邏輯 ---
         function addDragLogic(el) {
-            let isDragging = false;
-            let startX, startY, initialLeft, initialTop;
-
+            
             el.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                
-                // 取得滑鼠點擊位置相對於卡片的偏移
+                e.preventDefault(); // 防止選取文字
+
+                // 1. 計算卡牌中心點與滑鼠的偏移量，讓拿起時更自然
                 const rect = el.getBoundingClientRect();
-                const offsetX = e.clientX - rect.left;
-                const offsetY = e.clientY - rect.top;
+                const shiftX = e.clientX - rect.left;
+                const shiftY = e.clientY - rect.top;
 
-                // 設定樣式讓卡片浮起
-                el.style.position = 'fixed'; // 改為 fixed 以便全螢幕移動
-                el.style.zIndex = 1000;
+                // 2. 設置拖曳狀態
                 el.classList.add('dragging');
-
-                moveAt(e.clientX, e.clientY);
+                
+                // 3. 初始移動一次，並稍微向上偏移 (Offset) 讓卡牌顯示在游標上方
+                // 這樣滑鼠尖端就可以當作瞄準點
+                moveAt(e.pageX, e.pageY);
 
                 function moveAt(pageX, pageY) {
-                    el.style.left = pageX - offsetX + 'px';
-                    el.style.top = pageY - offsetY + 'px';
+                    // 這裡的 -120 是為了讓卡片顯示在滑鼠「上方」一點的位置
+                    // 因為我們有 scale(0.6)，所以視覺上需要調整位置
+                    el.style.left = pageX - (rect.width / 2) + 'px';
+                    el.style.top = pageY - (rect.height / 2) - 50 + 'px'; 
+
+                    checkHover(); // 檢查是否懸停在敵人上
                 }
 
                 function onMouseMove(event) {
-                    moveAt(event.clientX, event.clientY);
+                    moveAt(event.pageX, event.pageY);
                 }
 
-                // 滑鼠放開時
+                // 4. 偵測放置 (Drop)
                 document.addEventListener('mousemove', onMouseMove);
                 
-                el.onmouseup = function() {
+                // 使用 once: true 確保事件只觸發一次，避免重複綁定
+                document.addEventListener('mouseup', function onMouseUp(e) {
                     document.removeEventListener('mousemove', onMouseMove);
-                    el.onmouseup = null;
-                    isDragging = false;
-                    el.classList.remove('dragging');
-
-                    // 這裡可以加入判定邏輯：如果拖到敵人上方...
-                    const enemyRect = document.getElementById('enemy-area').getBoundingClientRect();
-                    const cardRect = el.getBoundingClientRect();
-
-                    if (isOverlapping(cardRect, enemyRect)) {
-                        // 觸發攻擊效果 (簡單演示)
-                        triggerAttackEffect();
-                        el.remove(); // 打出卡牌後移除
+                    
+                    // 檢查最終位置
+                    const enemyZone = document.getElementById('target-zone');
+                    // 由於 dragging 類別有 pointer-events: none，我們可以使用 elementFromPoint
+                    // 它可以穿透卡牌偵測到底下的元素
+                    const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+                    
+                    // 判定是否打出卡牌 (檢查滑鼠下的元素是否包含在 enemyZone 內)
+                    if (enemyZone.contains(elementBelow) || elementBelow === enemyZone) {
+                        triggerAttack(el);
                     } else {
-                        // 如果沒打出，復原樣式回到手牌區
-                        el.style.position = 'static';
-                        el.style.transform = 'none';
-                        el.style.zIndex = 'auto';
+                        // 復原
+                        returnCard(el);
                     }
-                };
+                    
+                    // 清除敵人發光特效
+                    enemyZone.classList.remove('enemy-hovered');
+
+                }, { once: true });
             });
-            
-            // 防止瀏覽器預設的圖片拖曳行為干擾
-            el.ondragstart = function() {
-                return false;
-            };
         }
 
-        // 簡單的碰撞檢測
-        function isOverlapping(rect1, rect2) {
-            return !(rect1.right < rect2.left || 
-                     rect1.left > rect2.right || 
-                     rect1.bottom < rect2.top || 
-                     rect1.top > rect2.bottom);
+        // 檢查懸停狀態 (讓敵人發光)
+        function checkHover() {
+            const enemyZone = document.getElementById('target-zone');
+            // 隱藏目前拖曳的卡牌以偵測下方元素 (雖然 CSS pointer-events: none 已處理，但雙重保險)
+            const elBelow = document.elementFromPoint(event.clientX, event.clientY);
+            
+            if (enemyZone.contains(elBelow) || elBelow === enemyZone) {
+                enemyZone.classList.add('enemy-hovered');
+            } else {
+                enemyZone.classList.remove('enemy-hovered');
+            }
         }
 
-        function triggerAttackEffect() {
-            const hpFill = document.querySelector('.hp-bar-fill');
-            const currentWidth = parseFloat(hpFill.style.width) || 80;
-            const newWidth = Math.max(0, currentWidth - 15); // 扣血
-            hpFill.style.width = newWidth + '%';
+        function returnCard(el) {
+            el.classList.remove('dragging');
+            el.style.position = '';
+            el.style.left = '';
+            el.style.top = '';
+            el.style.width = ''; 
+            el.style.transform = '';
+        }
+
+        function triggerAttack(cardEl) {
+            // 視覺特效：卡牌縮小消失
+            cardEl.style.transform = 'scale(0)';
+            cardEl.style.opacity = '0';
             
-            // 視覺回饋
-            const enemyHud = document.querySelector('.enemy-hud');
-            enemyHud.style.backgroundColor = '#fff';
             setTimeout(() => {
-                enemyHud.style.backgroundColor = 'rgba(20, 0, 0, 0.8)';
-            }, 100);
+                cardEl.remove(); // 移除 DOM
+            }, 300);
+
+            // 扣血邏輯
+            const hpFill = document.querySelector('.hp-bar-fill');
+            const hpText = document.getElementById('hp-text');
+            
+            // 取得當前寬度%
+            let currentWidth = parseFloat(hpFill.style.width) || 100;
+            let dmg = Math.floor(Math.random() * 20) + 10; // 隨機傷害
+            let newWidth = Math.max(0, currentWidth - dmg);
+            
+            hpFill.style.width = newWidth + '%';
+            hpText.innerText = Math.round(newWidth) + '%';
+
+            // 撞擊震動特效
+            const enemyFrame = document.querySelector('.enemy-frame');
+            enemyFrame.style.transform = 'translate(5px, 5px)';
+            setTimeout(() => enemyFrame.style.transform = 'translate(-5px, -5px)', 50);
+            setTimeout(() => enemyFrame.style.transform = 'translate(0, 0)', 100);
         }
     </script>
 </body>

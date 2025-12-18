@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Steampunk Duelist - Advanced AI & Wave System</title>
+    <title>Steampunk Duelist v5.2 - Logic Restored</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -30,65 +30,42 @@
             border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
+        /* 敵人方塊與動態邊框 */
         .enemy-box {
             width: 420px; background: #222; border: 6px ridge var(--bronze);
             padding: 25px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s;
         }
         
-        /* 敵人類型視覺與抖動 */
-        .tier-1 { border-color: var(--bronze); animation: shake-1 1s infinite; }
-        .tier-2 { border-color: #c0c0c0; box-shadow: 0 0 15px rgba(255,255,255,0.2); animation: shake-2 0.4s infinite; }
-        .tier-3 { border-color: var(--gold); box-shadow: 0 0 30px rgba(255,215,0,0.4); animation: shake-3 0.15s infinite; }
+        /* 敵人類型 CSS 修正 */
+        .tier-1 { border-color: #cd7f32 !important; animation: idle 2s infinite; }
+        .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); animation: shake-mid 0.5s infinite; }
+        .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); animation: shake-boss 0.15s infinite; }
 
-        @keyframes shake-1 { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(1px,1px); } }
-        @keyframes shake-2 { 0% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } }
-        @keyframes shake-3 { 0% { transform: translate(3px, 3px); } 50% { transform: translate(-3px, -3px); } }
+        @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+        @keyframes shake-mid { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } }
+        @keyframes shake-boss { 0% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } }
 
-        /* --- 操作回饋 --- */
-        .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 25px var(--steam-blue); }
+        .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); background: rgba(0,243,255,0.05); }
 
         /* --- 左側儀表板 --- */
-        #side-panel {
-            position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
-            display: flex; flex-direction: column; gap: 20px;
-        }
-        .gauge-circle {
-            width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%;
-            background: radial-gradient(circle, var(--leather), #111);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
+        #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; }
+        .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-        /* --- 卡牌設計 --- */
-        #hand-area {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end;
-        }
-        .card {
-            width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a;
-            border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -5px;
-            cursor: pointer; position: relative; transition: 0.2s;
-            background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
-        }
-        .card.selected { transform: translateY(-50px); border-color: var(--steam-blue); box-shadow: 0 0 20px var(--steam-blue); }
-        .card-cost {
-            position: absolute; top: -15px; left: -15px; width: 40px; height: 40px;
-            background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye';
-        }
+        /* --- 卡牌 --- */
+        #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; }
+        .card { width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -5px; cursor: pointer; position: relative; transition: 0.2s; background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png'); }
+        .card.selected { transform: translateY(-60px); border-color: var(--steam-blue); box-shadow: 0 10px 30px #000; }
+        .card-cost { position: absolute; top: -15px; left: -15px; width: 40px; height: 40px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.4rem; }
         .card-effect-num { margin-top: 40px; text-align: center; font-size: 1.8rem; font-family: 'Rye'; color: var(--bronze); }
         .card-row { position: absolute; bottom: 8px; right: 12px; font-size: 0.8rem; color: #842; }
 
         /* --- 血量條 --- */
-        .hp-container { width: 100%; height: 20px; background: #000; border-radius: 10px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; }
-        .hp-fill { height: 100%; width: 100%; transition: 0.5s; }
+        .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; }
+        .hp-fill { height: 100%; width: 100%; transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
 
         #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; }
 
-        #end-btn {
-            position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
-            width: 100px; height: 100px; border-radius: 50%; background: var(--bronze);
-            border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer;
-        }
+        #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; }
     </style>
 </head>
 <body>
@@ -102,7 +79,7 @@
             <div id="ui-en-row" style="font-size:0.7rem; color: #888;">#--</div>
             <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem;">LOADING...</div>
             <div class="hp-container"><div id="ui-en-hp-fill" class="hp-fill" style="background: var(--danger);"></div></div>
-            <div id="ui-en-hp-text" style="text-align:right; font-size: 0.9rem;">-- / --</div>
+            <div id="ui-en-hp-text" style="text-align:right; font-weight:bold; font-size: 0.9rem;">-- / --</div>
         </div>
     </div>
 
@@ -119,7 +96,7 @@
 
     <div id="player-hub">
         <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
-            <span>PLAYER_SYSTEM</span>
+            <span>PLAYER_SYSTEM_CORE</span>
             <span id="ui-pl-hp-text">100 / 100</span>
         </div>
         <div class="hp-container"><div id="ui-pl-hp-fill" class="hp-fill" style="background: var(--success);"></div></div>
@@ -150,16 +127,25 @@
                 draw(5);
             }});
 
-            // 2. 讀取所有敵人資料 (包含 E-J 欄行動)
+            // 2. 讀取敵人 (E-J 欄行動)
             Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: true, complete: (res) => {
                 state.enemyPool = res.data.filter(r => Object.values(r)[0]).map((r,i)=>{
                     const v = Object.values(r);
-                    return { name: v[0], hp: parseInt(v[1])||10, type: parseInt(v[2])||1, actions: v.slice(4,10).filter(a=>a), row: i+2 };
+                    return { 
+                        name: v[0], 
+                        hp: parseInt(v[1])||10, 
+                        type: parseInt(v[2])||1, 
+                        actions: v.slice(4,10).filter(a => a && a.trim() !== ""), 
+                        row: i+2 
+                    };
                 });
+                
                 // 3. 讀取波次配置
                 Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: true, complete: (res) => {
                     state.waveConfig = res.data.map(r => ({
-                        n: parseInt(Object.values(r)[0])||0, e: parseInt(Object.values(r)[1])||0, b: parseInt(Object.values(r)[2])||0
+                        n: parseInt(Object.values(r)[0])||0, 
+                        e: parseInt(Object.values(r)[1])||0, 
+                        b: parseInt(Object.values(r)[2])||0
                     }));
                     generateWave();
                 }});
@@ -168,7 +154,7 @@
 
         function generateWave() {
             const cfg = state.waveConfig[state.round - 1];
-            if(!cfg) return alert("Game Clear!");
+            if(!cfg) return alert("All Challenges Complete!");
             
             let wave = [];
             const add = (type, count) => {
@@ -179,19 +165,22 @@
             
             state.currentWave = wave;
             state.enemyWaveIdx = 0;
-            spawnNextInWave();
+            spawnNext();
         }
 
-        function spawnNextInWave() {
+        function spawnNext() {
             if(state.enemyWaveIdx < state.currentWave.length) {
                 const raw = state.currentWave[state.enemyWaveIdx];
                 state.currentEnemy = { ...raw, curHP: raw.hp, actionStep: 0 };
                 state.enemyWaveIdx++;
+                
+                // 更新 UI 與邊框
                 const box = document.getElementById('enemy-target');
                 box.className = `enemy-box tier-${state.currentEnemy.type}`;
                 updateUI();
             } else {
-                state.round++; // 該波敵人全死，增加 Round
+                // 波次結束，此時才進 Round++
+                state.round++;
                 generateWave();
             }
         }
@@ -205,7 +194,7 @@
                 const el = document.createElement('div');
                 el.className = 'card';
                 const showEff = d.effect.replace(/\[#\w+\s+(-?\d+)\]/g, '$1');
-                el.innerHTML = `<div class="card-cost">${d.cost}</div><div style="padding:10px;text-align:center;font-family:'Rye'">${d.name}</div><div class="card-effect-num">${showEff}</div><div class="card-row">${d.row}</div>`;
+                el.innerHTML = `<div class="card-cost">${d.cost}</div><div style="padding:10px;text-align:center;font-family:'Rye';font-size:1.1rem;border-bottom:1px solid #ccc">${d.name}</div><div class="card-effect-num">${showEff}</div><div class="card-row">${d.row}</div>`;
                 el.onclick = (e) => { e.stopPropagation(); if(state.energy>=d.cost) select(el, d); };
                 area.appendChild(el);
             }
@@ -240,25 +229,28 @@
             }
             state.selectedCard.el.remove();
             cancel();
-            if(state.currentEnemy.curHP <= 0) spawnNextInWave();
+            if(state.currentEnemy.curHP <= 0) spawnNext();
             updateUI();
         }
 
-        function enemyAI() {
-            if(!state.currentEnemy) return;
-            const actions = state.currentEnemy.actions;
-            if(!actions.length) return;
-            const act = actions[state.currentEnemy.actionStep % actions.length];
+        // 敵人反擊 AI (在 END ACTION 時觸發)
+        function enemyCounter() {
+            if(!state.currentEnemy || state.currentEnemy.curHP <= 0) return;
+            const acts = state.currentEnemy.actions;
+            if(!acts.length) return;
+            
+            const currentAct = acts[state.currentEnemy.actionStep % acts.length];
             const reg = /\[#(\w+)\s+(-?\d+)\]/g; let m;
-            while((m = reg.exec(act)) !== null) {
+            while((m = reg.exec(currentAct)) !== null) {
                 const tag = m[1], val = parseInt(m[2]);
                 if(tag === 'dmg') state.playerHP -= val;
             }
             state.currentEnemy.actionStep++;
+            updateUI();
         }
 
         document.getElementById('end-btn').onclick = () => {
-            enemyAI(); // 結束行動時敵人反擊
+            enemyCounter(); // 敵人先攻擊
             state.energy = 3;
             draw(5);
             updateUI();
@@ -268,14 +260,22 @@
             if(state.currentEnemy) {
                 document.getElementById('ui-en-name').innerText = state.currentEnemy.name;
                 document.getElementById('ui-en-row').innerText = `Sheet Row: ${state.currentEnemy.row}`;
-                document.getElementById('ui-en-hp-fill').style.width = (state.currentEnemy.curHP/state.currentEnemy.hp*100)+'%';
+                const enPct = (state.currentEnemy.curHP / state.currentEnemy.hp) * 100;
+                document.getElementById('ui-en-hp-fill').style.width = Math.max(0, enPct) + '%';
                 document.getElementById('ui-en-hp-text').innerText = `${state.currentEnemy.curHP} / ${state.currentEnemy.hp}`;
             }
             document.getElementById('ui-round').innerText = state.round;
             document.getElementById('ui-energy').innerText = `${state.energy}/3`;
-            document.getElementById('ui-wave-left').innerText = state.currentWave.length - state.enemyWaveIdx;
+            document.getElementById('ui-wave-left').innerText = Math.max(0, state.currentWave.length - state.enemyWaveIdx);
+            
+            // 玩家血量
             document.getElementById('ui-pl-hp-text').innerText = `${state.playerHP} / 100`;
-            document.getElementById('ui-pl-hp-fill').style.width = state.playerHP + '%';
+            document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, state.playerHP) + '%';
+            
+            if(state.playerHP <= 0) {
+                alert("Game Over! System Rebooting...");
+                location.reload();
+            }
         }
 
         document.body.onclick = cancel;

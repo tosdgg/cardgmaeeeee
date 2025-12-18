@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Steampunk Tactical Interface</title>
+    <title>Steampunk Duel v3.5 - Live Data</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -10,7 +10,6 @@
             --brass: #b5a642; --bronze: #cd7f32; --leather: #4a3c31;
             --parchment: #eaddcf; --dark-metal: #2c2c2c; --glow: #ffae00;
             --steam-blue: #00f3ff;
-            --tier-1: #cd7f32; --tier-2: #c0c0c0; --tier-3: #ffd700;
         }
 
         body {
@@ -19,270 +18,275 @@
             overflow: hidden; height: 100vh;
         }
 
-        /* --- 頂部：多敵人動態生成 --- */
-        #enemy-container {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 20px; justify-content: center; width: 95%;
+        /* --- 敵人 1對1 區域 --- */
+        #enemy-hud {
+            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 20px;
         }
 
         .enemy-box {
-            width: 260px; background: var(--dark-metal); border: 4px ridge var(--brass);
-            padding: 12px; position: relative; transition: 0.3s;
+            width: 380px; background: var(--dark-metal); border: 4px ridge var(--brass);
+            padding: 20px; position: relative; transition: border-color 0.2s;
         }
 
-        /* 根據類型顯示邊框色 */
-        .type-1 { border-color: var(--tier-1); }
-        .type-2 { border-color: var(--tier-2); box-shadow: 0 0 10px var(--tier-2); }
-        .type-3 { border-color: var(--tier-3); box-shadow: 0 0 20px var(--tier-3); }
+        .type-1 { border-color: var(--bronze); }
+        .type-2 { border-color: #c0c0c0; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        .type-3 { border-color: var(--glow); box-shadow: 0 0 20px rgba(255,174,0,0.4); }
 
-        .row-id { font-size: 0.7rem; color: #888; font-family: monospace; }
+        .row-info-label { font-size: 0.7rem; color: #888; font-family: monospace; }
 
-        /* --- 側邊資訊 --- */
-        #left-gauges {
+        /* --- 左側狀態儀表 --- */
+        #left-stats {
             position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
             display: flex; flex-direction: column; gap: 15px;
         }
 
-        .gauge {
-            width: 100px; background: var(--leather); border: 3px solid var(--bronze);
+        .stat-gauge {
+            width: 110px; background: var(--leather); border: 3px solid var(--bronze);
             border-radius: 12px; padding: 10px; text-align: center;
         }
 
-        /* --- 按鈕：結束行動 --- */
-        #end-action-btn {
-            position: absolute; right: 30px; top: 50%; transform: translateY(-50%);
-            width: 110px; height: 110px; border-radius: 50%;
-            background: radial-gradient(circle, var(--bronze), var(--leather));
-            border: 5px double var(--brass); color: white; cursor: pointer;
-            font-family: 'Rye'; text-shadow: 1px 1px 2px #000;
-        }
-
-        /* --- 卡牌 --- */
+        /* --- 手牌與卡牌 --- */
         #hand-area {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; height: 280px; display: flex; justify-content: center;
+            width: 90%; height: 260px; display: flex; justify-content: center;
             align-items: flex-end; pointer-events: none;
         }
 
         .card {
-            width: 155px; height: 230px; background: var(--parchment); color: #221100;
-            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -8px;
+            width: 150px; height: 220px; background: var(--parchment); color: #221100;
+            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -10px;
             pointer-events: auto; cursor: grab; position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         }
-        
-        .card-meta {
-            position: absolute; top: -12px; left: -12px; text-align: center;
+
+        .card-row-tag {
+            position: absolute; bottom: 8px; right: 12px; 
+            font-size: 0.7rem; color: #775533; font-family: monospace;
         }
-        .card-cost {
-            width: 38px; height: 38px; background: var(--dark-metal); color: var(--steam-blue);
+
+        .card-cost-tag {
+            position: absolute; top: -12px; left: -12px; width: 38px; height: 38px;
+            background: var(--dark-metal); color: var(--steam-blue);
             border: 2px solid var(--steam-blue); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-family: 'Rye';
+            display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem;
         }
 
-        .hp-bar { width: 100%; height: 12px; background: #000; border-radius: 6px; overflow: hidden; margin: 8px 0; }
-        .hp-fill { height: 100%; transition: 0.3s; background: #d93d3d; }
+        .dragging {
+            position: fixed !important; z-index: 9999 !important;
+            pointer-events: none !important; transform: scale(0.8) !important;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
 
-        .dragging { position: fixed !important; transform: scale(0.6) !important; pointer-events: none; z-index: 1000; }
+        .hp-bar { width: 100%; height: 14px; background: #000; border-radius: 7px; overflow: hidden; margin: 8px 0; }
+        .hp-fill { height: 100%; transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); background: #d93d3d; }
+        
+        #end-action-btn {
+            position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
+            width: 100px; height: 100px; border-radius: 50%;
+            background: radial-gradient(circle, var(--bronze), var(--leather));
+            border: 5px double var(--brass); color: white; font-family: 'Rye'; cursor: pointer;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        #end-action-btn:active { transform: translateY(-50%) scale(0.95); }
     </style>
 </head>
 <body>
 
-    <div id="enemy-container"></div>
-
-    <div id="left-gauges">
-        <div class="gauge">
-            <div style="font-size:0.7rem">ROUND</div>
-            <div id="round-val" style="font-family:'Rye'; font-size:1.8rem; color:var(--glow)">1</div>
-        </div>
-        <div class="gauge">
-            <div style="font-size:0.7rem">ENERGY</div>
-            <div id="energy-val" style="font-family:'Rye'; font-size:1.8rem; color:var(--steam-blue)">3/3</div>
+    <div id="enemy-hud">
+        <div class="enemy-box" id="active-enemy-zone">
+            <div class="row-info-label" id="enemy-row-display">Sheet Row: --</div>
+            <div id="enemy-name" style="font-family:'Rye'; font-size:1.6rem; color:var(--bronze)">CONNECTING...</div>
+            <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill" style="width: 100%"></div></div>
+            <div id="enemy-hp-text" style="text-align:right; font-size:0.85rem; font-weight:bold">-- / --</div>
         </div>
     </div>
 
-    <div style="position:absolute; bottom:330px; left:50%; transform:translateX(-50%); width:400px; text-align:center;">
-        <div style="display:flex; justify-content:space-between; font-size:0.8rem">
-            <span>UNIT_PLAYER</span>
-            <span id="player-hp-text">100 / 100</span>
+    <div id="left-stats">
+        <div class="stat-gauge">
+            <div style="font-size:0.7rem">ENERGY</div>
+            <div id="energy-val" style="font-family:'Rye'; font-size:2.2rem; color:var(--steam-blue)">--</div>
         </div>
-        <div class="hp-bar"><div id="player-hp-fill" class="hp-fill" style="background:#44ff44; width:100%"></div></div>
+        <div class="stat-gauge">
+            <div style="font-size:0.7rem">LEFT</div>
+            <div id="enemies-left" style="font-family:'Rye'; font-size:2rem">--</div>
+        </div>
+        <div class="stat-gauge">
+            <div style="font-size:0.7rem">ROUND</div>
+            <div id="round-val" style="font-family:'Rye'; font-size:1.6rem; color:var(--glow)">1</div>
+        </div>
     </div>
 
     <button id="end-action-btn">END<br>ACTION</button>
     <div id="hand-area"></div>
 
     <script>
+        const BASE_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
+        const ENEMY_GID = "322780304";
+        const CARD_GID = "0";
+
         let state = {
-            playerHP: 100, playerMaxHP: 100,
-            energy: 3, maxEnergy: 3,
+            playerHP: 100,
+            energy: 3,
+            maxEnergy: 3,
             round: 1,
-            enemiesOnField: [],
             allCards: [],
-            allEnemyPool: []
+            enemyPool: [],
+            currentEnemy: null,
+            enemyIndex: 0
         };
 
-        // --- 載入邏輯 ---
-        function loadGameData() {
-            // 您原本的基礎 URL 請替換到這裡
-            const baseUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv"; 
-
-            // 這裡用模擬數據演示格式
-            const mockCards = `Name,Effect,Cost
-精密狙擊,造成 [#dmg 40] 點傷害,2
-緊急維修,自我修復 [#heal 20],1
-超負荷指令,強制進入下一波 [#nextround 1],3`;
-            
-            const mockEnemies = `Name,HP,Type
-發條蜘蛛,40,1
-精英守衛,120,2
-蒸汽神兵,400,3`;
-
-            // 處理卡牌
-            Papa.parse(mockCards, { header: true, complete: res => {
-                state.allCards = res.data.map((r, i) => ({...r, row: i + 2}));
-                drawCards(5);
-            }});
-
-            // 處理敵人
-            Papa.parse(mockEnemies, { header: true, complete: res => {
-                state.allEnemyPool = res.data.map((r, i) => ({...r, row: i + 2}));
-                spawnWave();
-            }});
-        }
-
-        function spawnWave() {
-            state.enemiesOnField = [];
-            // 每回合隨機抓 1-3 隻敵人
-            const count = Math.floor(Math.random() * 3) + 1;
-            for(let i=0; i<count; i++) {
-                let data = state.allEnemyPool[Math.floor(Math.random()*state.allEnemyPool.length)];
-                state.enemiesOnField.push({
-                    ...data,
-                    currentHP: parseInt(data.HP),
-                    id: Date.now() + i
-                });
-            }
-            renderEnemies();
-        }
-
-        function renderEnemies() {
-            const container = document.getElementById('enemy-container');
-            container.innerHTML = '';
-            state.enemiesOnField.forEach(en => {
-                const el = document.createElement('div');
-                el.className = `enemy-box type-${en.Type}`;
-                el.id = `en-${en.id}`;
-                const hpPct = (en.currentHP / en.HP) * 100;
-                el.innerHTML = `
-                    <div style="font-family:'Rye'">${en.Name}</div>
-                    <div class="row-id">From Row: ${en.row}</div>
-                    <div class="hp-bar"><div class="hp-fill" style="width:${hpPct}%"></div></div>
-                    <div style="font-size:0.7rem; text-align:right">${en.currentHP} / ${en.HP}</div>
-                `;
-                container.appendChild(el);
+        // 初始化：讀取 Google Sheets
+        async function initGame() {
+            // 讀取卡牌 (GID: 0)
+            Papa.parse(`${BASE_CSV_URL}&gid=${CARD_GID}`, {
+                download: true, header: true, skipEmptyLines: true,
+                complete: (results) => {
+                    state.allCards = results.data
+                        .filter(row => row.Name) // 確保有名字
+                        .map((r, i) => ({...r, row: i + 2}));
+                    drawCards(5);
+                    updateUI();
+                }
             });
+
+            // 讀取敵人 (GID: 322780304)
+            Papa.parse(`${BASE_CSV_URL}&gid=${ENEMY_GID}`, {
+                download: true, header: true, skipEmptyLines: true,
+                complete: (results) => {
+                    state.enemyPool = results.data
+                        .filter(row => row.Name)
+                        .map((r, i) => ({...r, row: i + 2}));
+                    loadEnemy();
+                }
+            });
+        }
+
+        function loadEnemy() {
+            if (state.enemyIndex < state.enemyPool.length) {
+                let data = state.enemyPool[state.enemyIndex];
+                state.currentEnemy = { ...data, curHP: parseInt(data.HP) };
+                updateEnemyUI();
+            } else {
+                document.getElementById('enemy-name').innerText = "VICTORY!";
+            }
+        }
+
+        function updateEnemyUI() {
+            if(!state.currentEnemy) return;
+            const en = state.currentEnemy;
+            document.getElementById('enemy-name').innerText = en.Name;
+            document.getElementById('enemy-row-display').innerText = `Sheet Row: ${en.row}`;
+            document.getElementById('enemies-left').innerText = state.enemyPool.length - state.enemyIndex;
+            
+            const pct = (en.curHP / en.HP) * 100;
+            document.getElementById('enemy-hp-fill').style.width = pct + '%';
+            document.getElementById('enemy-hp-text').innerText = `${en.curHP} / ${en.HP}`;
+            
+            const zone = document.getElementById('active-enemy-zone');
+            zone.className = `enemy-box type-${en.Type || 1}`;
         }
 
         function drawCards(num) {
             const hand = document.getElementById('hand-area');
             hand.innerHTML = '';
-            for(let i=0; i<num; i++) {
+            for(let i=0; i<num; i++){
                 const data = state.allCards[Math.floor(Math.random()*state.allCards.length)];
-                if(!data || !data.Name) continue;
-                const cardEl = document.createElement('div');
-                cardEl.className = 'card';
-                cardEl.innerHTML = `
-                    <div class="card-meta">
-                        <div class="card-cost">${data.Cost}</div>
-                        <div class="row-id">Row:${data.row}</div>
-                    </div>
-                    <div style="font-family:'Rye';padding:12px;text-align:center">${data.Name}</div>
-                    <div style="padding:10px;font-size:0.8rem;text-align:center">${data.Effect}</div>
+                if(!data) continue;
+                
+                const el = document.createElement('div');
+                el.className = 'card';
+                el.innerHTML = `
+                    <div class="card-cost-tag">${data.Cost}</div>
+                    <div style="font-family:'Rye'; padding:15px; text-align:center; font-size:1.1rem; border-bottom:1px solid #ddd">${data.Name}</div>
+                    <div style="padding:15px; font-size:0.9rem; text-align:center; line-height:1.4">${data.Effect}</div>
+                    <div class="card-row-tag">Row:${data.row}</div>
                 `;
-                bindDrag(cardEl, data);
-                hand.appendChild(cardEl);
+                bindDrag(el, data);
+                hand.appendChild(el);
             }
         }
 
         function bindDrag(el, data) {
             el.onmousedown = (e) => {
-                if(state.energy < data.Cost) return;
+                if(state.energy < parseInt(data.Cost)) {
+                    el.style.borderColor = "red";
+                    setTimeout(() => el.style.borderColor = "", 300);
+                    return;
+                }
+
                 const rect = el.getBoundingClientRect();
                 el.classList.add('dragging');
-                
-                document.onmousemove = (ev) => {
-                    el.style.left = ev.pageX - rect.width/2 + 'px';
-                    el.style.top = ev.pageY - rect.height/2 - 50 + 'px';
-                };
+
+                function moveAt(pageX, pageY) {
+                    el.style.left = pageX - (rect.width / 2) + 'px';
+                    el.style.top = pageY - (rect.height / 2) - 20 + 'px';
+                }
+
+                moveAt(e.pageX, e.pageY);
+
+                function onMouseMove(ev) {
+                    moveAt(ev.pageX, ev.pageY);
+                    const target = document.elementFromPoint(ev.clientX, ev.clientY);
+                    const zone = document.getElementById('active-enemy-zone');
+                    if(zone.contains(target)) zone.style.borderColor = "var(--steam-blue)";
+                    else zone.style.borderColor = "";
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
 
                 document.onmouseup = (ev) => {
-                    document.onmousemove = null;
+                    document.removeEventListener('mousemove', onMouseMove);
                     const target = document.elementFromPoint(ev.clientX, ev.clientY);
-                    const enemyEl = target?.closest('.enemy-box');
+                    const zone = document.getElementById('active-enemy-zone');
 
-                    if(enemyEl) {
-                        const enId = enemyEl.id.split('-')[1];
-                        executeEffect(data.Effect, enId);
-                        state.energy -= data.Cost;
+                    if(zone && zone.contains(target)) {
+                        applyEffect(data.Effect);
+                        state.energy -= parseInt(data.Cost);
                         el.remove();
                     } else {
                         el.classList.remove('dragging');
-                        el.style.position = '';
+                        el.style.position = ''; el.style.left = ''; el.style.top = '';
                     }
+                    zone.style.borderColor = "";
                     updateUI();
                     document.onmouseup = null;
                 };
             };
         }
 
-        function executeEffect(effect, targetId) {
+        function applyEffect(effect) {
             const regex = /\[#(\w+)\s+(-?\d+)\]/g;
             let match;
             while ((match = regex.exec(effect)) !== null) {
                 const tag = match[1];
                 const val = parseInt(match[2]);
-
-                if(tag === 'dmg') {
-                    let en = state.enemiesOnField.find(e => e.id == targetId);
-                    if(en) en.currentHP -= val;
-                }
-                if(tag === 'heal') {
-                    state.playerHP = Math.min(state.playerMaxHP, state.playerHP + val);
-                }
-                if(tag === 'nextround') {
-                    triggerNextRound();
-                }
+                if(tag === 'dmg') state.currentEnemy.curHP -= val;
+                if(tag === 'heal') state.playerHP = Math.min(100, state.playerHP + val);
+                if(tag === 'nextround') { state.round++; state.enemyIndex++; loadEnemy(); }
             }
-            
-            // 檢查敵人是否全滅
-            state.enemiesOnField = state.enemiesOnField.filter(en => en.currentHP > 0);
-            if(state.enemiesOnField.length === 0) triggerNextRound();
-            else renderEnemies();
-        }
 
-        function triggerNextRound() {
-            state.round++;
-            state.energy = state.maxEnergy;
-            spawnWave();
-            drawCards(5);
-            updateUI();
-        }
-
-        function endAction() {
-            state.energy = state.maxEnergy;
-            drawCards(5);
-            updateUI();
+            if(state.currentEnemy.curHP <= 0) {
+                state.enemyIndex++;
+                state.round++; // 根據您的需求：消滅敵人後增加 Round
+                loadEnemy();
+            } else {
+                updateEnemyUI();
+            }
         }
 
         function updateUI() {
             document.getElementById('energy-val').innerText = `${state.energy}/${state.maxEnergy}`;
             document.getElementById('round-val').innerText = state.round;
-            document.getElementById('player-hp-fill').style.width = (state.playerHP/state.playerMaxHP)*100 + '%';
-            document.getElementById('player-hp-text').innerText = `${state.playerHP} / ${state.playerMaxHP}`;
         }
 
-        document.getElementById('end-action-btn').onclick = endAction;
-        document.addEventListener('DOMContentLoaded', loadGameData);
+        document.getElementById('end-action-btn').onclick = () => {
+            state.energy = state.maxEnergy;
+            drawCards(5);
+            updateUI();
+        };
+
+        window.onload = initGame;
     </script>
 </body>
 </html>

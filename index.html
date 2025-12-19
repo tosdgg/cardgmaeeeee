@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.3 - Enemy Full Skill</title>
+    <title>Steampunk Duelist v10.5 - Stable Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -12,7 +12,7 @@
             --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
             --danger: #ff4444; --success: #44ff44; --shield: #00aaff; --poison: #bf00ff;
             --str: #ff9900; --vuln: #ff0066; --weak: #99cc00;
-            --boss-purple: #b300ff; --boss-red-bg: #3a0000;
+            --boss-purple: #b300ff; --boss-red-bg: #500000;
         }
 
         * { box-sizing: border-box; }
@@ -22,12 +22,13 @@
             color: var(--parchment); font-family: 'IM Fell English SC', "微軟正黑體", sans-serif;
             overflow: hidden; height: 100vh; width: 100vw; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
-            transition: background-image 1.5s ease-in-out; touch-action: manipulation;
+            transition: background-image 1s ease-in-out; touch-action: manipulation;
             display: flex; flex-direction: column;
         }
 
-        body.boss-mode { background-image: radial-gradient(circle, #7a0000 0%, var(--boss-red-bg) 100%) !important; }
+        body.boss-mode { background-image: radial-gradient(circle, #800 0%, var(--boss-red-bg) 90%) !important; }
 
+        /* 跑馬燈 */
         #marquee-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 30px;
             background: var(--danger); border-bottom: 2px solid var(--gold);
@@ -38,6 +39,7 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
+        /* --- 遮罩層 (重要：修復牌堆查看) --- */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 10000;
@@ -48,9 +50,10 @@
             display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
             max-width: 90%; max-height: 80vh; overflow-y: auto; padding: 20px;
         }
-        .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; }
+        .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; text-shadow: 0 0 10px #000; }
         .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
 
+        /* 過場 */
         .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
         .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
         #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
@@ -71,11 +74,12 @@
         }
         @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
 
+        /* --- 頂部 --- */
         #top-bar {
             width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; z-index: 100; pointer-events: none;
+            padding: 0 20px; z-index: 100; pointer-events: none; margin-top: 30px; /* 避開跑馬燈 */
         }
-        .dashboard-group { display: flex; gap: 15px; margin-top: 10px; pointer-events: auto; }
+        .dashboard-group { display: flex; gap: 15px; pointer-events: auto; }
         .gauge-circle {
             width: 70px; height: 70px; border: 3px solid var(--brass); border-radius: 50%;
             background: radial-gradient(circle, var(--leather), #111);
@@ -87,12 +91,12 @@
         .round-box {
             width: 60px; height: 70px; background: var(--leather); border: 3px double var(--brass);
             border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            margin-top: 10px;
         }
 
+        /* --- 戰鬥區 --- */
         #battle-area {
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            padding-top: 40px; gap: 20px; position: relative; width: 100%;
+            padding-top: 20px; gap: 15px; position: relative; width: 100%;
         }
 
         .enemy-box { 
@@ -104,8 +108,18 @@
         .tier-1 { border-color: #cd7f32 !important; }
         .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
         .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
-        .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple); animation: boss-pulse 1.5s infinite alternate; }
-        @keyframes boss-pulse { from { box-shadow: 0 0 30px var(--boss-purple); } to { box-shadow: 0 0 60px var(--boss-purple); } }
+        
+        /* ★ BOSS 特效增強 */
+        .tier-4 { 
+            border-color: var(--boss-purple) !important; 
+            box-shadow: 0 0 60px var(--boss-purple), inset 0 0 20px var(--boss-purple); 
+            animation: boss-pulse 0.8s infinite alternate ease-in-out; 
+        }
+        @keyframes boss-pulse { 
+            from { transform: scale(1); box-shadow: 0 0 40px var(--boss-purple); } 
+            to { transform: scale(1.02); box-shadow: 0 0 80px var(--boss-purple), 0 0 20px #fff; } 
+        }
+        
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
 
         #player-box {
@@ -115,6 +129,7 @@
         }
         #player-box:hover { background: rgba(255,255,255,0.05); }
 
+        /* --- 狀態顯示 --- */
         .status-row { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; margin: 8px 0; align-items: center; }
         .status-badge {
             display: inline-flex; align-items: center; justify-content: center;
@@ -139,6 +154,7 @@
         .hp-fill { height: 100%; width: 100%; position: absolute; left: 0; top: 0; transition: 0.4s; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2; }
 
+        /* --- 操作區 --- */
         #action-area {
             height: 240px; width: 100%; position: relative;
             display: flex; justify-content: center; align-items: flex-end;
@@ -179,8 +195,9 @@
 
         #action-log { position: absolute; top: 40%; width: 100%; text-align: center; font-family: 'Rye'; font-size: 2rem; color: #fff; text-shadow: 0 0 10px #000; pointer-events: none; z-index: 500; transition: 0.3s; opacity: 0; }
 
+        /* RWD */
         @media (min-width: 769px) and (max-width: 1366px) {
-            #battle-area { padding-top: 80px; }
+            #battle-area { padding-top: 60px; }
             .enemy-box { width: 320px; padding: 10px; }
             #player-box { width: 320px; }
             .card { width: 110px; height: 160px; }
@@ -195,20 +212,22 @@
             .gauge-val { font-size: 1rem; }
             .round-box { width: 45px; height: 55px; margin-right: 5px; }
 
-            #battle-area { padding-top: 90px; gap: 10px; justify-content: flex-start; }
+            #battle-area { padding-top: 50px; gap: 10px; justify-content: flex-start; }
             .enemy-box { width: 90%; padding: 10px; margin-top: 0; }
             #player-box { width: 90%; margin-top: 5px; }
             
-            #hand-area { height: 180px; bottom: 30px; }
+            /* 手機版卡牌上移 (bottom: 40px) */
+            #hand-area { height: 180px; bottom: 40px; }
             .card { width: 90px; height: 130px; margin: 0 -10px; }
             .card-name { font-size: 0.6rem; padding: 5px 0; }
             .card-desc { font-size: 0.5rem; margin-top: 5px; padding: 0 2px; }
             .card-cost { width: 22px; height: 22px; font-size: 0.9rem; top: -8px; left: -8px; }
 
-            #end-btn { width: 65px; height: 65px; font-size: 0.8rem; }
-            #piles-ui { bottom: 120px; left: 10px; flex-direction: column; gap: 5px; } 
+            /* 按鈕位置修復 */
+            #end-btn { width: 70px; height: 70px; font-size: 0.8rem; }
+            #piles-ui { bottom: 130px; left: 10px; flex-direction: column; gap: 5px; } 
             .pile-btn { width: 40px; height: 50px; }
-            #controls-ui { bottom: 85px; right: 15px; }
+            #controls-ui { bottom: 90px; right: 20px; } /* 往內縮一點 */
             #hand-counter { font-size: 1rem; }
             
             .reward-btn { width: 100%; height: 80px; flex-direction: row; padding: 10px; gap: 20px; justify-content: flex-start; }
@@ -258,10 +277,10 @@
 
     <div id="action-area">
         <div id="piles-ui">
-            <div class="pile-btn" onclick="showPile('DRAW PILE', state.drawPile)">
+            <div class="pile-btn" onclick="showPile('DRAW PILE', state.draw)">
                 <span class="pile-lbl">DRAW</span><span id="ui-draw-n" class="pile-num">0</span>
             </div>
-            <div class="pile-btn" onclick="showPile('DISCARD', state.discardPile)">
+            <div class="pile-btn" onclick="showPile('DISCARD', state.disc)">
                 <span class="pile-lbl">DISC</span><span id="ui-disc-n" class="pile-num">0</span>
             </div>
         </div>
@@ -356,7 +375,7 @@
 
         function playCard(c, idx) {
             state.eng -= c.cost;
-            const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
+            const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
             while((m=reg.exec(c.eff))!==null) {
                 const t=m[1], vRaw=m[2], val=calc(vRaw);
                 if(t==='dmg') dmgEn(val);
@@ -395,7 +414,6 @@
             try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
         }
 
-        // ★ 修改：傷害計算 (扣除敵人護盾)
         function dmgEn(v) {
             let d = v + state.pStr; 
             if(state.curEn.vuln>0) d=Math.floor(d*1.5);
@@ -467,7 +485,9 @@
             }
             
             if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
-            else { enemyAction(); }
+            else { 
+                try { enemyAction(); } catch(e) { console.error(e); } 
+            }
             
             if(state.curEn.vuln>0) state.curEn.vuln--; 
             if(state.curEn.weak>0) state.curEn.weak--; 
@@ -475,14 +495,13 @@
             newTurn();
         };
 
-        // ★ 核心修改：敵人全技能實裝
         function enemyAction() {
             const acts = state.curEn.acts; if(!acts.length) return;
             const currentAct = acts[state.curEn.step % acts.length];
-            // 重置敵人護盾
-            state.curEn.shd = 0; 
+            // 重置敵人護盾 (若回合結束護盾不保留)
+            state.curEn.shd = 0;
 
-            const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
+            const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
             while((m=reg.exec(currentAct))!==null) {
                 const t=m[1], vRaw=m[2], val=resolveVal(vRaw);
                 
@@ -490,11 +509,9 @@
                     let inc = val + (state.curEn.str||0); 
                     if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
                     if(state.pVuln>0) inc=Math.floor(inc*1.5);
-                    
                     let rem = inc;
                     if(state.pShd>=rem) { state.pShd-=rem; rem=0; log("BLOCKED"); } 
                     else { rem-=state.pShd; state.pShd=0; }
-                    
                     if(rem>0) { state.pHP-=rem; log(`TOOK ${rem}`); visualFlash('player-box','dmg'); }
                 }
                 
@@ -519,6 +536,7 @@
             state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
         }
 
+        // --- 遺失函式補完 ---
         function showReward() {
             state.isRewardMode = true;
             document.getElementById('victory-screen').style.display = 'flex';
@@ -611,7 +629,18 @@
         function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
         function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
         function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
-        
+        function resolveVal(valStr) {
+            if (!valStr || valStr.toString().trim() === "") return 1;
+            if (isNaN(valStr) && !valStr.includes('{')) return 1;
+            if (!isNaN(valStr)) return parseFloat(valStr);
+            const en = state.curEn; const h=state.hand.length; 
+            let x = valStr.toString().toLowerCase()
+                .replace(/{hp}/g,state.pHP).replace(/{mhp}/g,state.pMaxHP).replace(/{shd}/g,state.pShd)
+                .replace(/{str}/g,state.pStr).replace(/{eng}/g,state.eng).replace(/{hand}/g,h)
+                .replace(/{en_hp}/g,en?en.curHP:0).replace(/{en_mhp}/g,en?en.hp:0).replace(/{en_psn}/g,en?en.psn:0).replace(/{en_vuln}/g,en?en.vuln:0);
+            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
+        }
+
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
             document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.5 - Stable Fix</title>
+    <title>Steampunk Duelist v10.6 - Drain Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -39,7 +39,7 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* --- 遮罩層 (重要：修復牌堆查看) --- */
+        /* --- 遮罩層 --- */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 10000;
@@ -77,7 +77,7 @@
         /* --- 頂部 --- */
         #top-bar {
             width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; z-index: 100; pointer-events: none; margin-top: 30px; /* 避開跑馬燈 */
+            padding: 0 20px; z-index: 100; pointer-events: none; margin-top: 30px;
         }
         .dashboard-group { display: flex; gap: 15px; pointer-events: auto; }
         .gauge-circle {
@@ -108,8 +108,6 @@
         .tier-1 { border-color: #cd7f32 !important; }
         .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
         .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
-        
-        /* ★ BOSS 特效增強 */
         .tier-4 { 
             border-color: var(--boss-purple) !important; 
             box-shadow: 0 0 60px var(--boss-purple), inset 0 0 20px var(--boss-purple); 
@@ -216,18 +214,16 @@
             .enemy-box { width: 90%; padding: 10px; margin-top: 0; }
             #player-box { width: 90%; margin-top: 5px; }
             
-            /* 手機版卡牌上移 (bottom: 40px) */
             #hand-area { height: 180px; bottom: 40px; }
             .card { width: 90px; height: 130px; margin: 0 -10px; }
             .card-name { font-size: 0.6rem; padding: 5px 0; }
             .card-desc { font-size: 0.5rem; margin-top: 5px; padding: 0 2px; }
             .card-cost { width: 22px; height: 22px; font-size: 0.9rem; top: -8px; left: -8px; }
 
-            /* 按鈕位置修復 */
             #end-btn { width: 70px; height: 70px; font-size: 0.8rem; }
             #piles-ui { bottom: 130px; left: 10px; flex-direction: column; gap: 5px; } 
             .pile-btn { width: 40px; height: 50px; }
-            #controls-ui { bottom: 90px; right: 20px; } /* 往內縮一點 */
+            #controls-ui { bottom: 90px; right: 20px; }
             #hand-counter { font-size: 1rem; }
             
             .reward-btn { width: 100%; height: 80px; flex-direction: row; padding: 10px; gap: 20px; justify-content: flex-start; }
@@ -414,6 +410,7 @@
             try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
         }
 
+        // --- 核心傷害計算 (玩家打敵人) ---
         function dmgEn(v) {
             let d = v + state.pStr; 
             if(state.curEn.vuln>0) d=Math.floor(d*1.5);
@@ -485,9 +482,7 @@
             }
             
             if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
-            else { 
-                try { enemyAction(); } catch(e) { console.error(e); } 
-            }
+            else { enemyAction(); }
             
             if(state.curEn.vuln>0) state.curEn.vuln--; 
             if(state.curEn.weak>0) state.curEn.weak--; 
@@ -495,28 +490,66 @@
             newTurn();
         };
 
+        // --- ★ 核心邏輯：敵人傷害計算 & 行動 ---
+        function dealDamageToPlayer(baseVal) {
+            let inc = baseVal + (state.curEn.str||0); 
+            if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
+            if(state.pVuln>0) inc=Math.floor(inc*1.5);
+            
+            let dmgToHp = inc;
+            let blocked = 0;
+
+            if(state.pShd >= inc) {
+                state.pShd -= inc;
+                blocked = inc;
+                dmgToHp = 0;
+                log("BLOCKED");
+            } else {
+                blocked = state.pShd;
+                dmgToHp -= state.pShd;
+                state.pShd = 0;
+            }
+
+            if(dmgToHp > 0) {
+                state.pHP -= dmgToHp;
+                log(`TOOK ${dmgToHp}`);
+                visualFlash('player-box', 'dmg');
+            }
+            return dmgToHp; // 回傳「實際扣血量」供吸血使用
+        }
+
         function enemyAction() {
             const acts = state.curEn.acts; if(!acts.length) return;
             const currentAct = acts[state.curEn.step % acts.length];
-            // 重置敵人護盾 (若回合結束護盾不保留)
-            state.curEn.shd = 0;
+            // 重置敵人護盾
+            state.curEn.shd = 0; 
 
             const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
             while((m=reg.exec(currentAct))!==null) {
                 const t=m[1], vRaw=m[2], val=resolveVal(vRaw);
                 
-                if(t==='dmg') {
-                    let inc = val + (state.curEn.str||0); 
-                    if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
-                    if(state.pVuln>0) inc=Math.floor(inc*1.5);
-                    let rem = inc;
-                    if(state.pShd>=rem) { state.pShd-=rem; rem=0; log("BLOCKED"); } 
-                    else { rem-=state.pShd; state.pShd=0; }
-                    if(rem>0) { state.pHP-=rem; log(`TOOK ${rem}`); visualFlash('player-box','dmg'); }
-                }
+                if(t==='dmg') { dealDamageToPlayer(val); }
                 
+                // ★ 新增：吸血 (Drain)
+                if(t==='drain') { 
+                    const dealt = dealDamageToPlayer(val); 
+                    if(dealt > 0) {
+                        state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP + dealt);
+                        log(`DRAIN HEAL ${dealt}`);
+                        visualFlash('enemy-target', 'pure');
+                    }
+                }
+
                 if(t==='heal') { state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP+val); log(`EN HEAL ${val}`); }
-                if(t==='sdmg') { state.curEn.curHP -= val; log(`EN SACRIFICE ${val}`); visualFlash('enemy-target','dmg'); }
+                
+                // ★ 修正：自殘 (Self Damage) 
+                if(t==='sdmg') { 
+                    state.curEn.curHP -= val; 
+                    log(`EN SACRIFICE ${val}`); 
+                    visualFlash('enemy-target','dmg');
+                    if(state.curEn.curHP <= 0) { checkWin(); return; } // 自殺檢測
+                }
+
                 if(t==='def') { state.curEn.shd = (state.curEn.shd||0) + val; log(`EN SHIELD ${val}`); } 
                 if(t==='str') { state.curEn.str = (state.curEn.str||0) + val; log(`EN STR ${val}`); }
                 
@@ -536,7 +569,6 @@
             state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
         }
 
-        // --- 遺失函式補完 ---
         function showReward() {
             state.isRewardMode = true;
             document.getElementById('victory-screen').style.display = 'flex';
@@ -629,18 +661,7 @@
         function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
         function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
         function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
-        function resolveVal(valStr) {
-            if (!valStr || valStr.toString().trim() === "") return 1;
-            if (isNaN(valStr) && !valStr.includes('{')) return 1;
-            if (!isNaN(valStr)) return parseFloat(valStr);
-            const en = state.curEn; const h=state.hand.length; 
-            let x = valStr.toString().toLowerCase()
-                .replace(/{hp}/g,state.pHP).replace(/{mhp}/g,state.pMaxHP).replace(/{shd}/g,state.pShd)
-                .replace(/{str}/g,state.pStr).replace(/{eng}/g,state.eng).replace(/{hand}/g,h)
-                .replace(/{en_hp}/g,en?en.curHP:0).replace(/{en_mhp}/g,en?en.hp:0).replace(/{en_psn}/g,en?en.psn:0).replace(/{en_vuln}/g,en?en.vuln:0);
-            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
-        }
-
+        
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
             document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;

@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
+<!DOCTYPE html><html lang="zh-TW"><head>
     <meta charset="UTF-8">
-    <title>Steampunk Duelist v5.2 - Logic Restored</title>
+    <title>Steampunk Duelist v6.0 - Fixed Logic</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -17,6 +15,7 @@
             color: var(--parchment); font-family: 'IM Fell English SC', serif;
             overflow: hidden; height: 100vh;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
+            transition: background 0.1s;
         }
 
         /* --- 戰鬥佈局 --- */
@@ -36,7 +35,7 @@
             padding: 25px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s;
         }
         
-        /* 敵人類型 CSS 修正 */
+        /* 敵人類型 CSS */
         .tier-1 { border-color: #cd7f32 !important; animation: idle 2s infinite; }
         .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); animation: shake-mid 0.5s infinite; }
         .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); animation: shake-boss 0.15s infinite; }
@@ -44,6 +43,7 @@
         @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
         @keyframes shake-mid { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } }
         @keyframes shake-boss { 0% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } }
+        @keyframes damage-flash { 0% { background-color: rgba(255,0,0,0.3); } 100% { background-color: transparent; } }
 
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); background: rgba(0,243,255,0.05); }
 
@@ -64,11 +64,12 @@
         .hp-fill { height: 100%; width: 100%; transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
 
         #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; }
+        #player-action-log { position: absolute; top: -30px; left: 0; width: 100%; text-align: center; color: var(--danger); font-family: 'Rye'; text-shadow: 2px 2px 0 #000; opacity: 0; transition: 0.5s; }
 
         #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; }
-    </style>
-</head>
-<body>
+        #end-btn:hover { background: #b87333; }
+        #end-btn:active { transform: translateY(-50%) scale(0.95); }
+    </style></head><body>
 
     <div id="battle-stage">
         <div class="round-gauge">
@@ -77,9 +78,10 @@
         </div>
         <div class="enemy-box tier-1" id="enemy-target">
             <div id="ui-en-row" style="font-size:0.7rem; color: #888;">#--</div>
-            <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem;">LOADING...</div>
+            <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem;">LOADING SYSTEM...</div>
             <div class="hp-container"><div id="ui-en-hp-fill" class="hp-fill" style="background: var(--danger);"></div></div>
             <div id="ui-en-hp-text" style="text-align:right; font-weight:bold; font-size: 0.9rem;">-- / --</div>
+            <div id="ui-en-intent" style="color:var(--steam-blue); font-size:0.8rem; margin-top:5px; height:1rem;"></div>
         </div>
     </div>
 
@@ -95,6 +97,7 @@
     </div>
 
     <div id="player-hub">
+        <div id="player-action-log">TOOK 10 DAMAGE!</div>
         <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
             <span>PLAYER_SYSTEM_CORE</span>
             <span id="ui-pl-hp-text">100 / 100</span>
@@ -119,33 +122,40 @@
         };
 
         async function init() {
-            // 1. 讀取卡片
-            Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: true, complete: (res) => {
-                state.cardPool = res.data.filter(r => Object.values(r)[0]).map((r,i)=>({
-                    name: Object.values(r)[0], effect: Object.values(r)[1], cost: parseInt(Object.values(r)[2])||0, row: i+2
+            // 策略：使用 header: false 來嚴格根據欄位索引 (Index) 讀取，避免標題錯誤
+            
+            // 1. 讀取卡片 (GID 0)
+            Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (res) => {
+                // 跳過第一列標題 (slice(1))
+                state.cardPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({
+                    name: r[0],         // A欄
+                    effect: r[1],       // B欄
+                    cost: parseInt(r[2])||0, // C欄
+                    row: i+2
                 }));
                 draw(5);
             }});
 
-            // 2. 讀取敵人 (E-J 欄行動)
-            Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: true, complete: (res) => {
-                state.enemyPool = res.data.filter(r => Object.values(r)[0]).map((r,i)=>{
-                    const v = Object.values(r);
+            // 2. 讀取敵人 (GID 322780304)
+            Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (res) => {
+                state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>{
+                    // A=0, B=1, C=2 (Type), D=3 (Skip), E~J=4~9 (Actions)
                     return { 
-                        name: v[0], 
-                        hp: parseInt(v[1])||10, 
-                        type: parseInt(v[2])||1, 
-                        actions: v.slice(4,10).filter(a => a && a.trim() !== ""), 
+                        name: r[0], 
+                        hp: parseInt(r[1])||10, 
+                        type: parseInt(r[2])||1, 
+                        actions: [r[4], r[5], r[6], r[7], r[8], r[9]].filter(a => a && a.trim() !== ""), 
                         row: i+2 
                     };
                 });
                 
-                // 3. 讀取波次配置
-                Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: true, complete: (res) => {
-                    state.waveConfig = res.data.map(r => ({
-                        n: parseInt(Object.values(r)[0])||0, 
-                        e: parseInt(Object.values(r)[1])||0, 
-                        b: parseInt(Object.values(r)[2])||0
+                // 3. 讀取波次配置 (GID 1319509950)
+                Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: false, complete: (res) => {
+                    // A=Normal, B=Elite, C=Boss
+                    state.waveConfig = res.data.slice(1).map(r => ({
+                        n: parseInt(r[0])||0, 
+                        e: parseInt(r[1])||0, 
+                        b: parseInt(r[2])||0
                     }));
                     generateWave();
                 }});
@@ -154,12 +164,18 @@
 
         function generateWave() {
             const cfg = state.waveConfig[state.round - 1];
-            if(!cfg) return alert("All Challenges Complete!");
+            if(!cfg) {
+                alert("All Challenges Complete! You survived!");
+                return;
+            }
             
             let wave = [];
+            // 嚴格比對 type (1, 2, 3)
             const add = (type, count) => {
                 const p = state.enemyPool.filter(en => en.type === type);
-                for(let i=0; i<count; i++) if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]});
+                for(let i=0; i<count; i++) {
+                    if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]});
+                }
             };
             add(1, cfg.n); add(2, cfg.e); add(3, cfg.b);
             
@@ -174,12 +190,16 @@
                 state.currentEnemy = { ...raw, curHP: raw.hp, actionStep: 0 };
                 state.enemyWaveIdx++;
                 
-                // 更新 UI 與邊框
+                // 更新 UI 邊框與類別
                 const box = document.getElementById('enemy-target');
-                box.className = `enemy-box tier-${state.currentEnemy.type}`;
+                // 移除舊 class，保留基礎
+                box.className = 'enemy-box';
+                // 加入新 class
+                box.classList.add(`tier-${state.currentEnemy.type}`);
+                
                 updateUI();
             } else {
-                // 波次結束，此時才進 Round++
+                // 當前波次結束，進入下一 Round
                 state.round++;
                 generateWave();
             }
@@ -193,9 +213,18 @@
                 if(!d) continue;
                 const el = document.createElement('div');
                 el.className = 'card';
+                // 視覺化：只顯示數字
                 const showEff = d.effect.replace(/\[#\w+\s+(-?\d+)\]/g, '$1');
-                el.innerHTML = `<div class="card-cost">${d.cost}</div><div style="padding:10px;text-align:center;font-family:'Rye';font-size:1.1rem;border-bottom:1px solid #ccc">${d.name}</div><div class="card-effect-num">${showEff}</div><div class="card-row">${d.row}</div>`;
-                el.onclick = (e) => { e.stopPropagation(); if(state.energy>=d.cost) select(el, d); };
+                el.innerHTML = `
+                    <div class="card-cost">${d.cost}</div>
+                    <div style="padding:10px;text-align:center;font-family:'Rye';font-size:1.1rem;border-bottom:1px solid #ccc">${d.name}</div>
+                    <div class="card-effect-num">${showEff}</div>
+                    <div class="card-row">Row:${d.row}</div>`;
+                
+                el.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    if(state.energy >= d.cost) select(el, d); 
+                };
                 area.appendChild(el);
             }
         }
@@ -221,7 +250,10 @@
         function use(target) {
             const d = state.selectedCard.d;
             state.energy -= d.cost;
-            const reg = /\[#(\w+)\s+(-?\d+)\]/g; let m;
+            
+            // 解析效果
+            const reg = /\[#(\w+)\s*(-?\d+)\]/g; // 允許空格彈性
+            let m;
             while((m = reg.exec(d.effect)) !== null) {
                 const tag = m[1], val = parseInt(m[2]);
                 if(tag === 'dmg' && target === 'enemy') state.currentEnemy.curHP -= val;
@@ -229,30 +261,51 @@
             }
             state.selectedCard.el.remove();
             cancel();
+            
             if(state.currentEnemy.curHP <= 0) spawnNext();
             updateUI();
         }
 
-        // 敵人反擊 AI (在 END ACTION 時觸發)
+        // --- 敵人反擊邏輯修復 ---
         function enemyCounter() {
             if(!state.currentEnemy || state.currentEnemy.curHP <= 0) return;
             const acts = state.currentEnemy.actions;
             if(!acts.length) return;
             
             const currentAct = acts[state.currentEnemy.actionStep % acts.length];
-            const reg = /\[#(\w+)\s+(-?\d+)\]/g; let m;
+            
+            // 解析動作 [#dmg 10]
+            const reg = /\[#(\w+)\s*(-?\d+)\]/g; 
+            let m;
+            let tookDamage = 0;
+
             while((m = reg.exec(currentAct)) !== null) {
                 const tag = m[1], val = parseInt(m[2]);
-                if(tag === 'dmg') state.playerHP -= val;
+                if(tag === 'dmg') {
+                    state.playerHP -= val;
+                    tookDamage += val;
+                }
             }
+
+            // 傷害反饋視覺
+            if(tookDamage > 0) {
+                const log = document.getElementById('player-action-log');
+                log.innerText = `TOOK ${tookDamage} DAMAGE!`;
+                log.style.opacity = 1;
+                document.body.style.animation = "damage-flash 0.3s";
+                setTimeout(() => { 
+                    log.style.opacity = 0; 
+                    document.body.style.animation = "";
+                }, 1000);
+            }
+
             state.currentEnemy.actionStep++;
-            updateUI();
         }
 
         document.getElementById('end-btn').onclick = () => {
-            enemyCounter(); // 敵人先攻擊
-            state.energy = 3;
-            draw(5);
+            enemyCounter(); // 先讓敵人攻擊
+            state.energy = 3; // 重置能量
+            draw(5); // 補牌
             updateUI();
         };
 
@@ -260,10 +313,19 @@
             if(state.currentEnemy) {
                 document.getElementById('ui-en-name').innerText = state.currentEnemy.name;
                 document.getElementById('ui-en-row').innerText = `Sheet Row: ${state.currentEnemy.row}`;
+                
                 const enPct = (state.currentEnemy.curHP / state.currentEnemy.hp) * 100;
                 document.getElementById('ui-en-hp-fill').style.width = Math.max(0, enPct) + '%';
                 document.getElementById('ui-en-hp-text').innerText = `${state.currentEnemy.curHP} / ${state.currentEnemy.hp}`;
+
+                // 顯示下一個動作預告 (Bonus UI)
+                const acts = state.currentEnemy.actions;
+                if(acts.length > 0) {
+                    const nextAct = acts[state.currentEnemy.actionStep % acts.length];
+                    document.getElementById('ui-en-intent').innerText = `INTENT: ${nextAct}`;
+                }
             }
+
             document.getElementById('ui-round').innerText = state.round;
             document.getElementById('ui-energy').innerText = `${state.energy}/3`;
             document.getElementById('ui-wave-left').innerText = Math.max(0, state.currentWave.length - state.enemyWaveIdx);
@@ -273,13 +335,13 @@
             document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, state.playerHP) + '%';
             
             if(state.playerHP <= 0) {
-                alert("Game Over! System Rebooting...");
-                location.reload();
+                setTimeout(() => {
+                    alert("SYSTEM FAILURE. Game Over.");
+                    location.reload();
+                }, 100);
             }
         }
 
         document.body.onclick = cancel;
         window.onload = init;
-    </script>
-</body>
-</html>
+    </script></body></html>

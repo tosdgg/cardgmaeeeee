@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.4 - Enemy Logic Fix</title>
+    <title>Steampunk Duelist v10.3 - Enemy Full Skill</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -28,7 +28,6 @@
 
         body.boss-mode { background-image: radial-gradient(circle, #7a0000 0%, var(--boss-red-bg) 100%) !important; }
 
-        /* 跑馬燈 */
         #marquee-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 30px;
             background: var(--danger); border-bottom: 2px solid var(--gold);
@@ -39,7 +38,6 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* --- 遮罩層 --- */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 10000;
@@ -53,7 +51,6 @@
         .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; }
         .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
 
-        /* 過場 */
         .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
         .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
         #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
@@ -74,7 +71,6 @@
         }
         @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
 
-        /* --- 頂部 --- */
         #top-bar {
             width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
             padding: 0 20px; z-index: 100; pointer-events: none;
@@ -94,7 +90,6 @@
             margin-top: 10px;
         }
 
-        /* --- 戰鬥區 --- */
         #battle-area {
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             padding-top: 40px; gap: 20px; position: relative; width: 100%;
@@ -120,11 +115,7 @@
         }
         #player-box:hover { background: rgba(255,255,255,0.05); }
 
-        /* --- 狀態顯示 --- */
-        .status-row { 
-            display: flex; gap: 6px; flex-wrap: wrap; 
-            min-height: 28px; margin: 8px 0; align-items: center;
-        }
+        .status-row { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; margin: 8px 0; align-items: center; }
         .status-badge {
             display: inline-flex; align-items: center; justify-content: center;
             padding: 3px 8px; border-radius: 4px;
@@ -148,7 +139,6 @@
         .hp-fill { height: 100%; width: 100%; position: absolute; left: 0; top: 0; transition: 0.4s; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2; }
 
-        /* --- 操作區 --- */
         #action-area {
             height: 240px; width: 100%; position: relative;
             display: flex; justify-content: center; align-items: flex-end;
@@ -189,7 +179,6 @@
 
         #action-log { position: absolute; top: 40%; width: 100%; text-align: center; font-family: 'Rye'; font-size: 2rem; color: #fff; text-shadow: 0 0 10px #000; pointer-events: none; z-index: 500; transition: 0.3s; opacity: 0; }
 
-        /* RWD */
         @media (min-width: 769px) and (max-width: 1366px) {
             #battle-area { padding-top: 80px; }
             .enemy-box { width: 320px; padding: 10px; }
@@ -406,23 +395,16 @@
             try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
         }
 
-        // ★ 修改：玩家攻擊敵人 (計算敵人護盾)
+        // ★ 修改：傷害計算 (扣除敵人護盾)
         function dmgEn(v) {
             let d = v + state.pStr; 
             if(state.curEn.vuln>0) d=Math.floor(d*1.5);
             if(state.pWeak>0) d=Math.floor(d*0.75);
             
             let dmgToHp = d;
-            // 敵人護盾抵擋
             if((state.curEn.shd||0) > 0) {
-                if(state.curEn.shd >= d) {
-                    state.curEn.shd -= d;
-                    dmgToHp = 0;
-                    log(`ENEMY BLOCKED`);
-                } else {
-                    dmgToHp -= state.curEn.shd;
-                    state.curEn.shd = 0;
-                }
+                if(state.curEn.shd >= d) { state.curEn.shd -= d; dmgToHp = 0; log(`ENEMY BLOCKED`); }
+                else { dmgToHp -= state.curEn.shd; state.curEn.shd = 0; }
             }
 
             if(dmgToHp > 0) {
@@ -493,29 +475,34 @@
             newTurn();
         };
 
+        // ★ 核心修改：敵人全技能實裝
         function enemyAction() {
             const acts = state.curEn.acts; if(!acts.length) return;
             const currentAct = acts[state.curEn.step % acts.length];
-            const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
-            
-            // ★ 回合開始前重置敵人護盾 (除非有保留機制，這裡先清零符合慣例)
-            state.curEn.shd = 0;
+            // 重置敵人護盾
+            state.curEn.shd = 0; 
 
+            const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
             while((m=reg.exec(currentAct))!==null) {
-                const t=m[1], vRaw=m[2], val=calc(vRaw);
+                const t=m[1], vRaw=m[2], val=resolveVal(vRaw);
+                
                 if(t==='dmg') {
                     let inc = val + (state.curEn.str||0); 
                     if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
                     if(state.pVuln>0) inc=Math.floor(inc*1.5);
+                    
                     let rem = inc;
                     if(state.pShd>=rem) { state.pShd-=rem; rem=0; log("BLOCKED"); } 
                     else { rem-=state.pShd; state.pShd=0; }
+                    
                     if(rem>0) { state.pHP-=rem; log(`TOOK ${rem}`); visualFlash('player-box','dmg'); }
                 }
+                
                 if(t==='heal') { state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP+val); log(`EN HEAL ${val}`); }
                 if(t==='sdmg') { state.curEn.curHP -= val; log(`EN SACRIFICE ${val}`); visualFlash('enemy-target','dmg'); }
                 if(t==='def') { state.curEn.shd = (state.curEn.shd||0) + val; log(`EN SHIELD ${val}`); } 
                 if(t==='str') { state.curEn.str = (state.curEn.str||0) + val; log(`EN STR ${val}`); }
+                
                 if(t==='mark') { state.pMarks.push(vRaw.trim()); log(`MARKED: ${vRaw.trim()}`); }
                 if(t==='unmark') { const i=state.pMarks.indexOf(vRaw.trim()); if(i>-1) state.pMarks.splice(i,1); }
                 if(t==='psn') { state.pPsn += val; log(`POISONED ${val}`); }
@@ -651,14 +638,12 @@
                 document.getElementById('ui-en-hp-text').innerText = `${e.curHP}/${e.hp}`;
                 document.getElementById('ui-en-hp-fill').style.width = Math.max(0, (e.curHP/e.hp)*100)+'%';
                 
-                // ★ 敵人護盾條顯示
                 const enShdFill = document.getElementById('ui-en-shield-fill');
                 enShdFill.style.width = (e.shd||0) > 0 ? Math.min(100,((e.shd||0)/e.hp)*100)+'%' : '0%';
 
                 document.getElementById('ui-en-intent').innerText = `INTENT: ${e.acts[e.step % e.acts.length]}`;
 
                 const eb = document.getElementById('en-status'); eb.innerHTML='';
-                // ★ 顯示敵人護盾與力量的 Badge
                 if((e.shd||0)>0) eb.innerHTML+=makeBadge('護盾', e.shd, 'st-shield');
                 if((e.str||0)>0) eb.innerHTML+=makeBadge('力量', e.str, 'st-str');
                 

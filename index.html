@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.0 - Reborn UI</title>
+    <title>Steampunk Duelist v10.1 - High Visibility</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
         :root {
             --brass: #b5a642; --bronze: #cd7f32; --gold: #ffd700;
             --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
-            --danger: #ff4444; --success: #44ff44; --shield: #00aaff; --poison: #bf00ff;
+            --danger: #ff3333; --success: #33ff33; --shield: #00ccff; --poison: #cc00ff;
+            --str: #ff9900; --vuln: #ff0066; --weak: #99cc00;
             --boss-purple: #b300ff; --boss-red-bg: #3a0000;
         }
 
@@ -22,18 +23,12 @@
             overflow: hidden; height: 100vh; width: 100vw; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
             transition: background-image 1.5s ease-in-out; touch-action: manipulation;
-            display: flex; flex-direction: column; /* 改為 Flex 佈局 */
+            display: flex; flex-direction: column;
         }
 
         body.boss-mode { background-image: radial-gradient(circle, #7a0000 0%, var(--boss-red-bg) 100%) !important; }
 
-        /* --- 1. 頂層資訊區 (Top Bar) --- */
-        #top-bar {
-            width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; z-index: 100; pointer-events: none;
-        }
-        
-        /* 跑馬燈 (絕對定位在最頂) */
+        /* 跑馬燈 */
         #marquee-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 30px;
             background: var(--danger); border-bottom: 2px solid var(--gold);
@@ -44,7 +39,47 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* 左上角儀表板 */
+        /* --- 遮罩層 --- */
+        .overlay-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 10000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        #pile-viewer-content {
+            display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
+            max-width: 90%; max-height: 80vh; overflow-y: auto; padding: 20px;
+        }
+        .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; }
+        .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
+
+        /* 過場畫面 */
+        .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
+        .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
+        #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
+        .reward-btn {
+            width: 220px; height: 280px; background: #222; border: 4px double var(--bronze); border-radius: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.3s; padding: 15px; text-align: center; color: var(--parchment);
+        }
+        .reward-btn:hover { transform: translateY(-10px); border-color: var(--steam-blue); box-shadow: 0 0 20px var(--steam-blue); background: #2a2a2a; }
+        .reward-icon { font-size: 4rem; margin-bottom: 20px; }
+        .reward-name { font-family: 'Rye'; font-size: 1.5rem; margin-bottom: 10px; color: var(--gold); }
+        .reward-desc { font-size: 0.9rem; color: #aaa; }
+        .warning-text { color: var(--danger); font-size: 0.9rem; margin-top: 20px; border: 1px solid var(--danger); padding: 5px 15px; border-radius: 5px; background: rgba(255, 0, 0, 0.1); }
+        #next-lvl-btn {
+            padding: 15px 50px; font-size: 2rem; font-family: 'Rye'; background: var(--steam-blue); color: #000; 
+            border: 5px solid #fff; border-radius: 10px; cursor: pointer; box-shadow: 0 0 30px var(--steam-blue);
+            animation: pulse-btn 1s infinite alternate; display: none; margin-top: 30px;
+        }
+        @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+        /* --- 頂層資訊 --- */
+        #top-bar {
+            width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; z-index: 100; pointer-events: none;
+        }
         .dashboard-group { display: flex; gap: 15px; margin-top: 10px; pointer-events: auto; }
         .gauge-circle {
             width: 70px; height: 70px; border: 3px solid var(--brass); border-radius: 50%;
@@ -54,38 +89,32 @@
         }
         .gauge-label { font-size: 0.6rem; color: #888; }
         .gauge-val { font-family: 'Rye'; font-size: 1.5rem; color: var(--steam-blue); }
-
-        /* 右上角回合數 */
         .round-box {
             width: 60px; height: 70px; background: var(--leather); border: 3px double var(--brass);
             border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
             margin-top: 10px;
         }
 
-        /* --- 2. 中層戰鬥區 (Battle Area) --- */
+        /* --- 戰鬥區 --- */
         #battle-area {
-            flex: 1; /* 佔據剩餘空間 */
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             padding-top: 40px; gap: 20px; position: relative; width: 100%;
         }
 
-        /* 敵人區塊 */
-        .enemy-box {
-            width: 400px; max-width: 90%; 
-            background: #222; border: 6px ridge var(--bronze);
-            padding: 15px 20px; border-radius: 8px; position: relative; cursor: pointer; transition: 0.3s;
+        .enemy-box { 
+            width: 360px; background: #222; border: 6px ridge var(--bronze); 
+            padding: 20px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; 
             display: flex; flex-direction: column; gap: 5px;
         }
         .enemy-box.stunned { filter: grayscale(100%) brightness(0.7); border-color: #555 !important; }
         .tier-1 { border-color: #cd7f32 !important; }
         .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
         .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
-        .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 40px var(--boss-purple); animation: boss-pulse 1.5s infinite alternate; }
-        @keyframes boss-pulse { from { box-shadow: 0 0 20px var(--boss-purple); } to { box-shadow: 0 0 50px var(--boss-purple); } }
-
+        .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple); animation: boss-pulse 1.5s infinite alternate; }
+        @keyframes boss-pulse { from { box-shadow: 0 0 30px var(--boss-purple); } to { box-shadow: 0 0 60px var(--boss-purple); } }
+        
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
 
-        /* 玩家區塊 (獨立出來) */
         #player-box {
             width: 400px; max-width: 90%;
             padding: 10px; border-radius: 10px; transition: 0.2s; cursor: pointer;
@@ -93,29 +122,58 @@
         }
         #player-box:hover { background: rgba(255,255,255,0.05); }
 
-        /* 通用血條樣式 */
+        /* --- ★ 狀態顯示 (極致優化版) --- */
+        .status-row { 
+            display: flex; gap: 8px; flex-wrap: wrap; 
+            min-height: 32px; margin: 10px 0; /* 增加高度與間距 */
+            align-items: center;
+        }
+        
+        /* 狀態圖示 (Poison, Shield 等) */
+        .status-icon { 
+            display: inline-flex; align-items: center; justify-content: center;
+            height: 32px; padding: 0 12px; border-radius: 16px; /* 圓角膠囊 */
+            font-weight: 900; font-family: sans-serif; font-size: 1.1rem; /* 字體加大 */
+            color: #fff; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; /* 強烈描邊 */
+            border: 2px solid #fff; box-shadow: 0 3px 6px rgba(0,0,0,0.8);
+            z-index: 5;
+        }
+        
+        /* 文字標記 (Mark, Stance 等) */
+        .status-text { 
+            display: inline-flex; align-items: center; justify-content: center;
+            height: 28px; padding: 0 10px; border-radius: 4px;
+            font-family: 'IM Fell English SC', serif; font-size: 0.95rem; font-weight: bold;
+            color: #ffd700; background: #333; 
+            border: 2px solid var(--bronze); box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        /* 顏色定義 (加亮) */
+        .st-poison { background: var(--poison); border-color: #f0f; }
+        .st-shield { background: var(--shield); border-color: #aaf; }
+        .st-str    { background: var(--str); border-color: #fc0; }
+        .st-vuln   { background: var(--vuln); border-color: #f99; }
+        .st-weak   { background: var(--weak); color: #fff; border-color: #df0; }
+        .st-stun   { background: #555; border: 2px dashed #fff; }
+        
+        .marker-lockon { background: #500; border-color: #f00; color: #fff; } 
+        .marker-stance { background: #004; border-color: #0ff; color: #fff; }
+
         .hp-bar-frame {
             width: 100%; height: 20px; background: #111; border: 2px solid var(--brass);
             border-radius: 10px; overflow: hidden; position: relative; margin-top: 5px;
         }
         .hp-fill { height: 100%; width: 100%; position: absolute; left: 0; top: 0; transition: 0.4s; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2; }
-        
-        .status-row { display: flex; gap: 4px; flex-wrap: wrap; min-height: 20px; }
-        .status-tag { 
-            padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: #fff; 
-            border: 1px solid rgba(255,255,255,0.3); background: #444; 
-            display: inline-flex; align-items: center; 
-        }
 
-        /* --- 3. 底層操作區 (Action Area) --- */
+        /* --- 操作區 --- */
         #action-area {
             height: 240px; width: 100%; position: relative;
             display: flex; justify-content: center; align-items: flex-end;
             padding-bottom: 10px;
         }
 
-        /* 手牌容器 */
         #hand-container {
             width: 100%; height: 100%; display: flex; justify-content: center; align-items: flex-end;
             perspective: 1000px; padding-bottom: 20px; overflow: visible;
@@ -123,7 +181,7 @@
 
         .card { 
             width: 130px; height: 190px; background: var(--parchment); color: #2a1a0a; 
-            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -15px; 
+            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -12px; 
             cursor: pointer; position: relative; transition: 0.25s; flex-shrink: 0;
             background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
             box-shadow: -5px 5px 15px rgba(0,0,0,0.5); transform-origin: center bottom;
@@ -131,93 +189,62 @@
         .card:hover { transform: translateY(-50px) scale(1.1) !important; z-index: 100; margin: 0 5px; }
         .card.selected { transform: translateY(-80px) scale(1.15) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
         
-        .card-header { display: flex; justify-content: space-between; padding: 5px; }
-        .card-cost { width: 28px; height: 28px; border-radius: 50%; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-weight: bold; }
-        .card-id { font-size: 0.6rem; color: #666; align-self: center; }
-        .card-name { text-align: center; font-family: 'Rye'; font-size: 0.85rem; font-weight: bold; border-bottom: 1px solid #aaa; padding-bottom: 2px; margin: 0 5px; }
-        .card-body { padding: 10px 5px; text-align: center; font-size: 0.7rem; color: #332; line-height: 1.25; font-weight: bold; }
-        
-        .tag { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.65rem; margin: 1px; color: #fff; }
-        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } 
-        .bg-misc { background: #555; } .bg-req { background: #000; border: 1px solid #f00; color: #f00; }
+        .card-cost { position: absolute; top: -12px; left: -12px; width: 32px; height: 32px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem; z-index: 2; }
+        .card-name { padding:10px 2px; text-align:center; font-family:'Rye'; font-size:0.9rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
+        .card-desc { margin-top: 15px; text-align: center; font-size: 0.75rem; color: #421; padding: 0 8px; line-height: 1.3; font-weight: bold;}
+        .card-row-id { position: absolute; bottom: 4px; left: 6px; font-size: 0.6rem; color: #888; font-family: sans-serif; opacity: 0.7; }
 
-        /* 左下角牌堆 */
-        #piles-ui {
-            position: absolute; left: 20px; bottom: 20px; display: flex; gap: 10px; z-index: 50;
-        }
-        .pile-btn {
-            width: 50px; height: 70px; background: #222; border: 2px solid var(--brass); border-radius: 5px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; box-shadow: 2px 2px 5px #000;
-        }
-        .pile-btn:hover { border-color: #fff; }
-        .pile-lbl { font-size: 0.6rem; color: #888; }
-        .pile-num { font-family: 'Rye'; font-size: 1.2rem; color: #fff; }
+        .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.7rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
+        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; } .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; } .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; } .bg-once { background: #333; color: #aaa; border: 1px solid #aaa; }
 
-        /* 右下角控制 */
-        #controls-ui {
-            position: absolute; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 50;
-        }
+        #piles-ui { position: absolute; bottom: 10px; left: 20px; display: flex; gap: 15px; z-index: 50; }
+        .pile-btn { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; cursor: pointer; transition: 0.2s; }
+        .pile-btn:hover { background: #333; border-color: #fff; }
+        .pile-lbl { font-size: 0.6rem; color: #888; margin-bottom: 5px; } .pile-num { font-family: 'Rye'; font-size: 1.5rem; color: #fff; }
+
+        #controls-ui { position: absolute; right: 20px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 50; }
         #hand-count { font-family: 'Rye'; font-size: 1.5rem; color: #888; text-shadow: 1px 1px 0 #000; }
-        #end-btn {
-            width: 90px; height: 90px; border-radius: 50%; background: var(--bronze);
-            border: 5px double var(--brass); color: #fff; font-family: 'Rye'; font-size: 1.2rem;
-            cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s;
-        }
+        #end-btn { width: 90px; height: 90px; border-radius: 50%; background: var(--bronze); border: 5px double var(--brass); color: #fff; font-family: 'Rye'; font-size: 1.2rem; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; }
         #end-btn:hover { transform: scale(1.05); background: #c57d3e; }
 
-        /* 浮動訊息 */
         #action-log { position: absolute; top: 40%; width: 100%; text-align: center; font-family: 'Rye'; font-size: 2rem; color: #fff; text-shadow: 0 0 10px #000; pointer-events: none; z-index: 500; transition: 0.3s; opacity: 0; }
 
-        /* --- 遮罩與過場 --- */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        .victory-title { font-family: 'Rye'; font-size: 3rem; color: var(--gold); margin-bottom: 20px; }
-        .reward-container { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
-        .reward-card { width: 180px; height: 240px; background: #222; border: 2px solid var(--bronze); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #eee; padding: 10px; text-align: center; }
-        .reward-card:hover { border-color: var(--steam-blue); background: #333; }
-        .reward-icon { font-size: 3rem; margin-bottom: 10px; }
-        #viewer-grid { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 90%; max-height: 70vh; overflow-y: auto; padding: 20px; }
-
-        /* --- 📱 RWD 響應式調整 --- */
-        
-        /* 1. 平板與寬螢幕手機 (橫向) */
-        @media (max-width: 1024px) {
+        /* RWD */
+        @media (min-width: 769px) and (max-width: 1366px) {
+            #battle-area { padding-top: 80px; } /* 下移避開跑馬燈 */
             .enemy-box { width: 320px; padding: 10px; }
             #player-box { width: 320px; }
             .card { width: 110px; height: 160px; }
             #end-btn { width: 80px; height: 80px; font-size: 1rem; }
         }
 
-        /* 2. 手機 (直向) - 徹底重排 */
-        @media (max-width: 600px) {
-            /* 壓縮儀表板 */
+        @media (max-width: 768px) {
+            body { background-position: center; background-size: cover; }
+            .marquee-content span { font-size: 1rem; line-height: 35px; }
             .dashboard-group { gap: 8px; margin-left: 5px; }
             .gauge-circle { width: 50px; height: 50px; border-width: 2px; }
             .gauge-val { font-size: 1rem; }
             .round-box { width: 45px; height: 55px; margin-right: 5px; }
 
-            /* 戰鬥區緊湊排列 */
-            #battle-area { padding-top: 50px; gap: 10px; justify-content: center; }
+            #battle-area { padding-top: 90px; gap: 10px; justify-content: flex-start; }
             
-            .enemy-box { width: 90%; padding: 10px; }
-            .enemy-name { font-size: 1.5rem; }
-            
+            .enemy-box { width: 90%; padding: 10px; margin-top: 0; }
             #player-box { width: 90%; margin-top: 5px; }
             
-            /* 手牌區縮小 */
             #action-area { height: 180px; }
             .card { width: 90px; height: 130px; margin: 0 -10px; }
             .card-name { font-size: 0.6rem; padding: 5px 0; }
             .card-desc { font-size: 0.5rem; margin-top: 5px; padding: 0 2px; }
             .card-cost { width: 22px; height: 22px; font-size: 0.9rem; top: -8px; left: -8px; }
 
-            /* 按鈕與計數 */
             #end-btn { width: 65px; height: 65px; font-size: 0.8rem; }
-            #piles-ui { bottom: 120px; left: 10px; flex-direction: column; gap: 5px; } /* 牌堆移到左側上方一點 */
+            #piles-ui { bottom: 120px; left: 10px; flex-direction: column; gap: 5px; } 
             .pile-btn { width: 40px; height: 50px; }
-            #hand-counter { bottom: 85px; right: 15px; font-size: 1rem; } /* 計數移到按鈕上方 */
+            #controls-ui { bottom: 85px; right: 15px; }
+            #hand-counter { font-size: 1rem; }
             
-            .reward-card { width: 140px; height: 180px; }
+            .reward-btn { width: 100%; height: 80px; flex-direction: row; padding: 10px; gap: 20px; justify-content: flex-start; }
+            .reward-icon { font-size: 2rem; margin: 0; } .reward-name { font-size: 1.2rem; margin: 0; } .reward-desc { display: none; }
         }
     </style>
 </head>
@@ -239,8 +266,7 @@
                 <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem; line-height:1;">LOADING</div>
                 <div id="ui-en-intent" style="color:var(--steam-blue); font-size:0.8rem;"></div>
             </div>
-            <div id="en-status" class="status-row"></div>
-            <div class="hp-bar-frame">
+            <div id="en-status" class="status-row"></div> <div class="hp-bar-frame">
                 <div id="ui-en-hp-fill" class="hp-fill" style="background:var(--danger);"></div>
             </div>
             <div id="ui-en-hp-text" style="text-align:right; font-size:0.8rem; color:#888;">-- / --</div>
@@ -251,13 +277,11 @@
                 <span style="font-family:'Rye'; color:#aaa;">PLAYER CORE</span>
                 <span id="ui-pl-hp-text" style="font-size:0.9rem;">100 / 100</span>
             </div>
-            <div id="pl-status" class="status-row"></div>
-            <div class="hp-bar-frame">
+            <div id="pl-status" class="status-row"></div> <div class="hp-bar-frame">
                 <div id="ui-pl-hp-fill" class="hp-fill" style="background:var(--success);"></div>
                 <div id="ui-pl-shield-fill" class="shield-fill"></div>
             </div>
         </div>
-        
         <div id="action-log"></div>
     </div>
 
@@ -279,11 +303,22 @@
         </div>
     </div>
 
-    <div id="overlay-screen" class="overlay" onclick="closeOverlay(event)">
-        <div class="victory-title" id="overlay-title">TITLE</div>
-        <div id="viewer-grid"></div>
-        <div id="reward-container" class="reward-container"></div>
-        <div style="color:#888; margin-top:20px; font-size:0.8rem;" id="overlay-tip">(Click background to close)</div>
+    <div id="victory-screen" class="overlay-screen">
+        <div class="victory-title">WAVE COMPLETE</div>
+        <div class="victory-subtitle">CHOOSE YOUR REWARD</div>
+        <div id="reward-options">
+            <div class="reward-btn" onclick="showRemoveCardUI()"><div class="reward-icon">🔥</div><div class="reward-name">PURGE</div><div class="reward-desc">Remove 1 card</div></div>
+            <div class="reward-btn" onclick="showAddCardUI()"><div class="reward-icon">🃏</div><div class="reward-name">DRAFT</div><div class="reward-desc">Add 1 card</div></div>
+            <div class="reward-btn" onclick="chooseHeal()"><div class="reward-icon">❤</div><div class="reward-name">REST</div><div class="reward-desc">Heal 15%</div></div>
+        </div>
+        <div class="warning-text">⚠ SELECTION CANNOT BE CANCELLED. ⚠</div>
+        <button id="next-lvl-btn" onclick="goToNextLevel()">NEXT BATTLE ➡</button>
+    </div>
+
+    <div id="card-selection-overlay" class="overlay-screen" onclick="closePileViewer(event)">
+        <div class="viewer-title" id="selection-title-text">SELECT</div>
+        <div id="pile-viewer-content"></div>
+        <div class="close-tip">(Click background to close)</div>
     </div>
 
     <script>
@@ -295,15 +330,13 @@
             eng: 3, maxEng: 3, maxHand: 5, round: 1,
             lib: [], deck: [], draw: [], disc: [], hand: [],
             enPool: [], waves: [], curWave: [], curEn: null, wIdx: 0,
-            sel: null, mode: 'battle' // battle, reward, view
+            sel: null, mode: 'battle', isRewardMode: false
         };
 
-        // --- Init ---
         async function init() {
             Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (r) => {
-                state.lib = r.data.slice(1).filter(d=>d[0]).map((d,i)=>({name:d[0], eff:d[1], cost:parseInt(d[2])||0, id:i+2}));
-                state.deck = [];
-                state.lib.slice(0,5).forEach(c=>{ state.deck.push({...c}); state.deck.push({...c}); });
+                state.lib = r.data.slice(1).filter(d=>d[0]).map((d,i)=>({name:d[0], eff:d[1], cost:parseInt(d[2])||0, id:i+2, row:i+2}));
+                state.deck = []; state.lib.slice(0,5).forEach(c=>{ state.deck.push({...c}); state.deck.push({...c}); });
                 initBattle();
             }});
             Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (r) => {
@@ -315,13 +348,9 @@
             }});
         }
 
-        function initBattle() {
-            state.draw = [...state.deck]; state.disc = []; state.hand = [];
-            shuffle(state.draw); drawCard(5);
-        }
+        function initBattle() { state.draw = [...state.deck]; state.disc = []; state.hand = []; shuffle(state.draw); drawCard(5); }
         function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} }
 
-        // --- Core Logic ---
         function genWave() {
             const cfg = state.waves[state.round-1];
             if(!cfg) return alert("VICTORY!");
@@ -335,7 +364,7 @@
             document.body.classList.remove('boss-mode');
             if(state.wIdx >= state.curWave.length) return showReward();
             const raw = state.curWave[state.wIdx];
-            state.curEn = { ...raw, curHP: raw.hp, step:0, psn:0, vuln:0, weak:0, stun:false, marks:[] };
+            state.curEn = { ...raw, curHP: raw.hp, hp:raw.hp, step:0, psn:0, vuln:0, weak:0, stun:false, marks:[] };
             state.wIdx++;
             if(state.curEn.type===4) { document.body.classList.add('boss-mode'); log("BOSS WARNING"); }
             document.getElementById('enemy-target').className = 'enemy-box tier-'+state.curEn.type;
@@ -347,10 +376,7 @@
             let cnt = Math.min(n, can);
             if(cnt<=0 && n>0) log("HAND FULL");
             for(let i=0; i<cnt; i++) {
-                if(!state.draw.length) {
-                    if(!state.disc.length) break;
-                    state.draw=[...state.disc]; state.disc=[]; shuffle(state.draw); log("SHUFFLE");
-                }
+                if(!state.draw.length) { if(!state.disc.length) break; state.draw=[...state.disc]; state.disc=[]; shuffle(state.draw); log("SHUFFLE"); }
                 state.hand.push(state.draw.pop());
             }
             renderHand(); update();
@@ -358,8 +384,6 @@
 
         function playCard(c, idx) {
             state.eng -= c.cost;
-            
-            // 解析效果
             const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
             while((m=reg.exec(c.eff))!==null) {
                 const t=m[1], vRaw=m[2], val=calc(vRaw);
@@ -381,11 +405,8 @@
                 if(t==='pure') { state.curEn.curHP-=val; log(`PURE ${val}`); visualFlash('enemy-target','pure'); }
                 if(t==='maxhp') { state.pMaxHP+=val; state.pHP+=val; log(`MAXHP +${val}`); }
             }
-
             state.hand.splice(idx, 1);
-            if(c.eff.includes('[#once]')) log("BANISHED");
-            else state.disc.push(c);
-            
+            if(c.eff.includes('[#once]')) log("BANISHED"); else state.disc.push(c);
             cancelSel(); checkWin(); update(); renderHand();
         }
 
@@ -408,22 +429,18 @@
 
         function checkWin() { if(state.curEn && state.curEn.curHP<=0) nextEn(); }
 
-        // --- Interaction ---
         function renderHand() {
             const div = document.getElementById('hand-container'); div.innerHTML='';
             state.hand.forEach((c, i) => {
                 const el = document.createElement('div'); el.className='card';
                 el.innerHTML = `
-                    <div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-id">#${c.id}</div></div>
+                    <div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-row-id">#${c.row}</div></div>
                     <div class="card-name">${c.name}</div>
                     <div class="card-body">${fmt(c.eff)}</div>
                 `;
-                // 點擊事件
                 el.onclick = (e) => {
                     e.stopPropagation();
                     if(state.eng < c.cost) { log("NO ENERGY"); return; }
-                    
-                    // 條件檢查 (Req)
                     const req = /\[#req\s+(.*?)\]/.exec(c.eff);
                     if(req && !state.curEn.marks.includes(req[1].trim())) { log(`REQ: ${req[1]}`); return; }
                     const reqm = /\[#reqme\s+(.*?)\]/.exec(c.eff);
@@ -431,19 +448,14 @@
 
                     if(state.sel && state.sel.idx === i) cancelSel();
                     else {
-                        cancelSel();
-                        state.sel = { idx:i, card:c };
-                        el.classList.add('selected');
-                        // 自動判斷目標
+                        cancelSel(); state.sel = { idx:i, card:c }; el.classList.add('selected');
                         const isAtk = /\[#(dmg|psn|weak|vuln|stun|drain|pure|mark|unmark|req)/.test(c.eff);
                         if(isAtk) { document.getElementById('enemy-target').classList.add('target-active'); state.sel.target='en'; }
                         else { document.getElementById('player-box').classList.add('target-active'); state.sel.target='pl'; }
                     }
                 };
-                // 角度
                 const rot = (i - (state.hand.length-1)/2) * 5;
                 el.style.transform = `rotate(${rot}deg) translateY(${Math.abs(rot)*2}px)`;
-                
                 div.appendChild(el);
             });
         }
@@ -459,16 +471,11 @@
 
         document.getElementById('end-btn').onclick = () => {
             if(!state.curEn) return;
-            // 棄手牌
-            state.hand.forEach(c=>state.disc.push(c)); state.hand=[];
-            renderHand();
-            
-            // 敵人回合
+            state.hand.forEach(c=>state.disc.push(c)); state.hand=[]; renderHand();
             if(state.curEn.psn>0) { 
                 state.curEn.curHP-=state.curEn.psn; state.curEn.psn--; log(`POISON ${state.curEn.psn+1}`);
                 if(state.curEn.curHP<=0) { nextEn(); newTurn(); return; }
             }
-            
             if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
             else {
                 const act = state.curEn.acts[(state.curEn.step++) % state.curEn.acts.length];
@@ -478,28 +485,108 @@
                     if(t==='dmg') {
                         let inc = v; if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
                         let rem = inc;
-                        if(state.pShd>=rem) { state.pShd-=rem; rem=0; log("BLOCKED"); }
-                        else { rem-=state.pShd; state.pShd=0; }
+                        if(state.pShd>=rem) { state.pShd-=rem; rem=0; log("BLOCKED"); } else { rem-=state.pShd; state.pShd=0; }
                         if(rem>0) { state.pHP-=rem; log(`TOOK ${rem}`); visualFlash('player-box','dmg'); }
                     }
                     if(t==='heal') { state.curEn.curHP+=v; log(`EN HEAL ${v}`); }
                     if(t==='mark') { state.pMarks.push(m[2].trim()); log(`MARKED: ${m[2]}`); }
                 }
             }
-            
-            if(state.curEn.vuln>0) state.curEn.vuln--;
-            if(state.curEn.weak>0) state.curEn.weak--;
-            
-            newTurn();
+            if(state.curEn.vuln>0) state.curEn.vuln--; if(state.curEn.weak>0) state.curEn.weak--; newTurn();
         };
 
-        function newTurn() {
-            state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
+        function newTurn() { state.pShd=0; state.eng=state.maxEng; drawCard(5); update(); }
+
+        function showReward() {
+            state.isRewardMode = true;
+            document.getElementById('victory-screen').style.display = 'flex';
+            document.getElementById('reward-options').style.display = 'flex';
+            document.querySelector('.warning-text').style.display = 'block';
+            document.querySelector('.victory-subtitle').innerText = "CHOOSE YOUR REWARD";
+            document.getElementById('next-lvl-btn').style.display = 'none';
         }
 
-        // --- UI Utils ---
+        window.showRemoveCardUI = () => {
+            const ov = document.getElementById('card-selection-overlay');
+            const ct = document.getElementById('pile-viewer-content');
+            document.getElementById('selection-title-text').innerText = "REMOVE A CARD";
+            ct.innerHTML = '';
+            state.deck.forEach((c,i)=>{
+                const el = mkCardEl(c); el.style.position='relative'; el.style.transform='scale(0.9)'; el.style.margin='0';
+                el.onclick = (e)=>{ e.stopPropagation(); if(confirm("Remove?")) { state.deck.splice(i,1); finishReward(); ov.style.display='none'; }};
+                ct.appendChild(el);
+            });
+            ov.style.display='flex';
+        };
+
+        window.showAddCardUI = () => {
+            const ov = document.getElementById('card-selection-overlay');
+            const ct = document.getElementById('pile-viewer-content');
+            document.getElementById('selection-title-text').innerText = "DRAFT A CARD";
+            ct.innerHTML = '';
+            for(let i=0;i<3;i++){
+                const c = state.lib[Math.floor(Math.random()*state.lib.length)];
+                const el = mkCardEl(c); el.style.position='relative'; el.style.transform='scale(0.9)'; el.style.margin='0';
+                el.onclick = (e)=>{ e.stopPropagation(); if(confirm("Add?")) { state.deck.push({...c}); finishReward(); ov.style.display='none'; }};
+                ct.appendChild(el);
+            }
+            ov.style.display='flex';
+        };
+
+        window.chooseHeal = () => {
+            const h = Math.floor(state.pMaxHP*0.15); state.pHP = Math.min(state.pMaxHP, state.pHP+h);
+            alert(`Healed ${h}`); finishReward();
+        };
+
+        function finishReward() {
+            document.getElementById('reward-options').style.display = 'none';
+            document.querySelector('.warning-text').style.display = 'none';
+            document.querySelector('.victory-subtitle').innerText = "PREPARE FOR NEXT BATTLE";
+            document.getElementById('next-lvl-btn').style.display = 'block';
+        }
+
+        window.goToNextLevel = () => {
+            document.getElementById('victory-screen').style.display='none';
+            state.isRewardMode = false; state.round++; genWave(); initBattle();
+        };
+
+        window.showPile = (t, arr) => {
+            if(state.isRewardMode) return;
+            const ov = document.getElementById('card-selection-overlay');
+            const ct = document.getElementById('pile-viewer-content');
+            document.getElementById('selection-title-text').innerText = t;
+            ct.innerHTML = '';
+            [...arr].sort((a,b)=>a.row-b.row).forEach(c => {
+                const el = mkCardEl(c); el.style.pointerEvents='none'; el.style.transform='scale(0.8)'; el.style.position='relative'; el.style.margin='0';
+                ct.appendChild(el);
+            });
+            ov.style.display = 'flex';
+        };
+
+        window.closePileViewer = (e) => {
+            if(e.target.id==='card-selection-overlay' && !state.isRewardMode) document.getElementById('card-selection-overlay').style.display='none';
+        };
+
+        function mkCardEl(c) {
+            const el = document.createElement('div'); el.className='card';
+            el.innerHTML=`<div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-row-id">#${c.row}</div></div><div class="card-name">${c.name}</div><div class="card-body">${fmt(c.eff)}</div>`;
+            return el;
+        }
+
+        function fmt(t) {
+            return t.replace(/\[#(\w+)\s*(.*?)\]/g, (m,k,v)=>{
+                if(k==='dmg') return `<span class="tag-badge bg-dmg">DMG ${v}</span>`;
+                if(k==='def') return `<span class="tag-badge bg-def">DEF ${v}</span>`;
+                if(k==='heal') return `<span class="tag-badge bg-heal">HEAL ${v}</span>`;
+                if(k==='mark') return `<span class="tag-badge bg-mark">${v}</span>`;
+                if(k==='req') return `<span class="tag-badge bg-req">REQ ${v}</span>`;
+                if(k==='reqme') return `<span class="tag-badge bg-req">NEED ${v}</span>`;
+                if(k==='once') return `<span class="tag-badge bg-once">ONCE</span>`;
+                return `<span class="tag-badge bg-eng">${k.toUpperCase()} ${v}</span>`;
+            });
+        }
+
         function update() {
-            // Stats
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
             document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;
             document.getElementById('ui-round').innerText = state.round;
@@ -507,16 +594,15 @@
             document.getElementById('ui-draw-n').innerText = state.draw.length;
             document.getElementById('ui-disc-n').innerText = state.disc.length;
 
-            // Player
             document.getElementById('ui-pl-hp-text').innerText = `${state.pHP}/${state.pMaxHP}`;
             document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, (state.pHP/state.pMaxHP)*100)+'%';
             document.getElementById('ui-pl-shield-fill').style.width = state.pShd>0 ? Math.min(100,(state.pShd/state.pMaxHP)*100)+'%' : '0%';
+            
             const pb = document.getElementById('pl-status'); pb.innerHTML='';
             if(state.pShd>0) pb.innerHTML+=`<span class="status-icon st-shield">${state.pShd}</span>`;
             if(state.pStr>0) pb.innerHTML+=`<span class="status-icon st-str">${state.pStr}</span>`;
-            countMarks(state.pMarks).forEach(m=> pb.innerHTML+=`<span class="status-text">${m.n}${m.c>1?' x'+m.c:''}</span>`);
+            countMarks(state.pMarks).forEach(m=> pb.innerHTML+=`<span class="status-text ${getMarkClass(m.n)}">${m.n}${m.c>1?' x'+m.c:''}</span>`);
 
-            // Enemy
             if(state.curEn) {
                 const e = state.curEn;
                 document.getElementById('ui-en-name').innerText = e.name;
@@ -531,90 +617,15 @@
                 if(e.vuln>0) eb.innerHTML+=`<span class="status-icon st-vuln">${e.vuln}</span>`;
                 if(e.weak>0) eb.innerHTML+=`<span class="status-icon st-weak">${e.weak}</span>`;
                 if(e.stun) eb.innerHTML+=`<span class="status-icon st-stun">STUN</span>`;
-                countMarks(e.marks).forEach(m=> eb.innerHTML+=`<span class="status-text">${m.n}${m.c>1?' x'+m.c:''}</span>`);
+                countMarks(e.marks).forEach(m=> eb.innerHTML+=`<span class="status-text ${getMarkClass(m.n)}">${m.n}${m.c>1?' x'+m.c:''}</span>`);
             }
             if(state.pHP<=0) { setTimeout(()=>location.reload(), 500); alert("DEFEAT"); }
         }
 
-        function showReward() {
-            state.mode = 'reward';
-            const ov = document.getElementById('overlay-screen');
-            const rc = document.getElementById('reward-container');
-            const vg = document.getElementById('viewer-grid');
-            
-            document.getElementById('overlay-title').innerText = "WAVE CLEARED";
-            document.getElementById('overlay-tip').style.display = 'none';
-            vg.innerHTML = ''; rc.innerHTML = ''; ov.style.display = 'flex';
-
-            // Rewards
-            const r1 = `<div class="reward-card" onclick="rewardRemove()"><div class="reward-icon">🔥</div><div>PURGE<br><span style="font-size:0.7rem;color:#888">Remove a card</span></div></div>`;
-            const r2 = `<div class="reward-card" onclick="rewardAdd()"><div class="reward-icon">🃏</div><div>DRAFT<br><span style="font-size:0.7rem;color:#888">Add a card</span></div></div>`;
-            const r3 = `<div class="reward-card" onclick="rewardHeal()"><div class="reward-icon">❤</div><div>REST<br><span style="font-size:0.7rem;color:#888">Heal 15%</span></div></div>`;
-            rc.innerHTML = r1+r2+r3;
-        }
-
-        window.rewardHeal = () => {
-            state.pHP = Math.min(state.pMaxHP, state.pHP + Math.floor(state.pMaxHP*0.15));
-            nextLevel();
-        };
-        window.rewardRemove = () => {
-            const rc = document.getElementById('reward-container'); rc.innerHTML = '';
-            const vg = document.getElementById('viewer-grid');
-            state.deck.forEach((c,i)=>{
-                const el = mkCardEl(c); el.onclick = ()=>{ if(confirm("Remove?")) { state.deck.splice(i,1); nextLevel(); }};
-                vg.appendChild(el);
-            });
-        };
-        window.rewardAdd = () => {
-            const rc = document.getElementById('reward-container'); rc.innerHTML = '';
-            const vg = document.getElementById('viewer-grid');
-            for(let i=0;i<3;i++){
-                const c = state.lib[Math.floor(Math.random()*state.lib.length)];
-                const el = mkCardEl(c); el.onclick = ()=>{ if(confirm("Add?")) { state.deck.push({...c}); nextLevel(); }};
-                vg.appendChild(el);
-            }
-        };
-
-        function nextLevel() {
-            document.getElementById('overlay-screen').style.display='none';
-            state.round++; state.mode='battle'; genWave(); initBattle();
-        }
-
-        function showPile(t, arr) {
-            if(state.mode==='reward') return;
-            const ov = document.getElementById('overlay-screen');
-            const rc = document.getElementById('reward-container');
-            const vg = document.getElementById('viewer-grid');
-            document.getElementById('overlay-title').innerText = t;
-            document.getElementById('overlay-tip').style.display = 'block';
-            rc.innerHTML = ''; vg.innerHTML = '';
-            [...arr].sort((a,b)=>a.id-b.id).forEach(c => vg.appendChild(mkCardEl(c)));
-            ov.style.display = 'flex'; state.mode='view';
-        }
-
-        function closeOverlay(e) {
-            if(state.mode==='view' && e.target.id==='overlay-screen') {
-                document.getElementById('overlay-screen').style.display='none'; state.mode='battle';
-            }
-        }
-
-        function mkCardEl(c) {
-            const el = document.createElement('div'); el.className='card';
-            el.innerHTML=`<div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-id">#${c.id}</div></div><div class="card-name">${c.name}</div><div class="card-body">${fmt(c.eff)}</div>`;
-            el.style.position='relative'; el.style.margin='0'; el.style.transform='none';
-            return el;
-        }
-
-        function fmt(t) {
-            return t.replace(/\[#(\w+)\s*(.*?)\]/g, (m,k,v)=>{
-                if(k==='dmg') return `<span class="tag bg-dmg">DMG ${v}</span>`;
-                if(k==='def') return `<span class="tag bg-def">DEF ${v}</span>`;
-                if(k==='heal') return `<span class="tag bg-heal">HEAL ${v}</span>`;
-                if(k==='mark') return `<span class="tag bg-mark">${v}</span>`;
-                if(k==='req') return `<span class="tag bg-req">REQ ${v}</span>`;
-                if(k==='once') return `<span class="tag bg-once">ONCE</span>`;
-                return `<span class="tag bg-misc">${k.toUpperCase()} ${v}</span>`;
-            });
+        function getMarkClass(name) {
+            if(name === '鎖定') return 'marker-lockon';
+            if(name === '架式') return 'marker-stance';
+            return '';
         }
 
         function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }

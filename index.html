@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v8.6 - Variable Master</title>
+    <title>Steampunk Duelist v8.7 - Smart Enemy</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -155,19 +155,16 @@
             }});
         }
 
-        // ★ 核心升級：全域變數解析器
         function resolveVal(valStr) {
             if (!valStr || valStr.toString().trim() === "") return 1;
             if (isNaN(valStr) && !valStr.includes('{')) return 1;
             if (!isNaN(valStr)) return parseFloat(valStr);
 
-            // 準備數據
             const en = state.currentEnemy;
             const handCount = document.querySelectorAll('#hand-area .card').length;
             const waveLeft = state.currentWave ? (state.currentWave.length - state.enemyWaveIdx) : 0;
 
             let expr = valStr.toString().toLowerCase()
-                // Player Vars
                 .replace(/{hp}/g, state.playerHP)
                 .replace(/{mhp}/g, state.playerMaxHP)
                 .replace(/{shd}/g, state.playerShield)
@@ -176,12 +173,8 @@
                 .replace(/{max_eng}/g, state.maxEnergy)
                 .replace(/{loss}/g, (state.playerMaxHP - state.playerHP))
                 .replace(/{hand}/g, handCount)
-                
-                // Game Vars
                 .replace(/{round}/g, state.round)
                 .replace(/{wave}/g, waveLeft)
-
-                // Enemy Vars (如果敵人存在)
                 .replace(/{en_hp}/g, en ? en.curHP : 0)
                 .replace(/{en_mhp}/g, en ? en.hp : 0)
                 .replace(/{en_loss}/g, en ? (en.hp - en.curHP) : 0)
@@ -353,6 +346,13 @@
             return dmg;
         }
         function healPlayer(amt) { state.playerHP = Math.min(state.playerMaxHP, state.playerHP + amt); showLog(`HEAL: ${amt}`); }
+        // ★ 新增：敵人治療
+        function enemyHeal(amt) { 
+            state.currentEnemy.curHP = Math.min(state.currentEnemy.hp, state.currentEnemy.curHP + amt); 
+            showLog(`ENEMY HEAL: ${amt}`); 
+            visualFlash('enemy-target', 'pure'); // 使用 pure 效果閃一下白光代表治療
+        }
+
         function checkWin() { if(state.currentEnemy && state.currentEnemy.curHP <= 0) spawnNext(); }
         function playerTakeDamage(amt) {
             let incoming = amt;
@@ -382,15 +382,39 @@
             startPlayerTurn();
         };
 
+        // ★ 核心修改：敵人行動也支援動態變數與標記
         function enemyAction() {
             const acts = state.currentEnemy.actions;
             if(!acts.length) return;
             const currentAct = acts[state.currentEnemy.actionStep % acts.length];
-            const reg = /\[#(\w+)\s*(-?\d+)?\]/g; 
+            
+            // 使用與卡牌相同的 regex，支援公式
+            const reg = /\[#(\w+)\s*(.*?)\]/g; 
             let m;
             while((m = reg.exec(currentAct)) !== null) {
-                const tag = m[1], val = parseInt(m[2])||0;
+                const tag = m[1];
+                const rawVal = m[2];
+                const val = resolveVal(rawVal); // 解析公式
+
+                // 傷害玩家
                 if(tag === 'dmg') playerTakeDamage(val);
+                
+                // ★ 敵人自我治療 (e.g. [#heal {en_loss}*0.5])
+                if(tag === 'heal') enemyHeal(val);
+
+                // ★ 敵人給玩家上狀態 (e.g. [#mark 鎖定])
+                if(tag === 'mark') {
+                    const markerName = rawVal.trim();
+                    state.playerMarkers.push(markerName);
+                    showLog(`ENEMY MARKED: ${markerName}`);
+                }
+                
+                // ★ 敵人移除玩家狀態
+                if(tag === 'unmark') {
+                     const markerName = rawVal.trim();
+                     const idx = state.playerMarkers.indexOf(markerName);
+                     if(idx > -1) { state.playerMarkers.splice(idx, 1); showLog(`UNMARKED: ${markerName}`); }
+                }
             }
             state.currentEnemy.actionStep++;
         }

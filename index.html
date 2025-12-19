@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v9.0 - Cycle & Transition</title>
+    <title>Steampunk Duelist v9.1 - Tablet Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -37,25 +37,31 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye', cursive; font-size: 1.3rem; line-height: 35px; padding-right: 50px; text-shadow: 2px 2px 4px #000; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* --- 過場畫面 (新增) --- */
+        /* --- 過場畫面 (UI 修復) --- */
         #victory-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 10000;
             display: none; flex-direction: column; align-items: center; justify-content: center;
             backdrop-filter: blur(5px);
+            gap: 30px; /* 增加間距 */
         }
-        .victory-title { font-family: 'Rye'; font-size: 4rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 50px; }
+        .victory-title { 
+            font-family: 'Rye'; font-size: 4rem; color: var(--gold); 
+            text-shadow: 0 0 20px var(--brass); text-align: center;
+            margin: 0; padding: 0;
+        }
         #next-lvl-btn {
-            position: absolute; right: 10%; top: 50%; transform: translateY(-50%);
-            padding: 20px 40px; font-size: 2rem; font-family: 'Rye';
+            /* 移除 absolute，改用 flex 排版 */
+            position: relative; transform: none; top: auto; right: auto;
+            padding: 20px 60px; font-size: 2rem; font-family: 'Rye';
             background: var(--steam-blue); color: #000; border: 5px solid #fff;
             border-radius: 10px; cursor: pointer; box-shadow: 0 0 30px var(--steam-blue);
             animation: pulse-btn 1s infinite alternate;
         }
-        @keyframes pulse-btn { from { transform: translateY(-50%) scale(1); } to { transform: translateY(-50%) scale(1.1); } }
+        @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
 
-        /* --- 戰鬥區域 --- */
-        #battle-stage { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 40px; transition: 0.3s; }
+        /* --- 戰鬥佈局 (PC 預設) --- */
+        #battle-stage { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 40px; transition: 0.3s; z-index: 5; }
         .round-gauge { width: 80px; height: 100px; background: var(--leather); border: 3px double var(--brass); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         
         .enemy-box { width: 420px; background: #222; border: 6px ridge var(--bronze); padding: 25px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; }
@@ -76,23 +82,16 @@
         .st-poison { background: var(--poison); } .st-shield { background: var(--shield); } .st-str { background: var(--str); }
         .st-vuln { background: var(--vuln); } .st-weak { background: var(--weak); color: #000; } .st-stun { background: #555; border: 1px dashed #fff; }
 
-        #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; transition: 0.3s; }
+        #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; transition: 0.3s; z-index: 10; }
         .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-        /* --- 牌堆顯示 UI (新增) --- */
-        #pile-display {
-            position: absolute; bottom: 20px; left: 20px;
-            display: flex; gap: 15px; z-index: 50;
-        }
-        .pile-box {
-            width: 60px; height: 80px; background: #222; border: 2px solid var(--brass);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border-radius: 5px; box-shadow: 0 5px 10px #000;
-        }
+        /* 牌堆顯示 */
+        #pile-display { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 15px; z-index: 50; }
+        .pile-box { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; }
         .pile-label { font-size: 0.6rem; color: #888; margin-bottom: 5px; }
         .pile-count { font-family: 'Rye'; font-size: 1.5rem; color: #fff; }
 
-        #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; pointer-events: none; transition: 0.3s; }
+        #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; pointer-events: none; transition: 0.3s; z-index: 20; }
         .card { width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -15px; cursor: pointer; position: relative; transition: 0.25s; background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png'); pointer-events: auto; box-shadow: -5px 5px 15px rgba(0,0,0,0.5); }
         .card:hover { transform: translateY(-40px) rotate(0deg) !important; z-index: 100; margin: 0 5px; }
         .card.selected { transform: translateY(-80px) scale(1.1) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
@@ -112,13 +111,36 @@
         .hp-fill { height: 100%; width: 100%; transition: 0.4s; position: absolute; left: 0; top: 0; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2;}
 
-        #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; }
+        #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; z-index: 10; }
         #action-log { position: absolute; top: 120px; width: 100%; text-align: center; color: #fff; font-family: 'Rye'; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 500; font-size: 1.5rem; transition: 0.3s; }
-        #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; }
+        #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; z-index: 50; }
         #end-btn:hover { background: #b87333; transform: translateY(-50%) scale(1.05); }
 
         #hand-counter { position: absolute; bottom: 20px; right: 20px; font-family: 'Rye', serif; font-size: 2rem; color: var(--parchment); text-shadow: 2px 2px 0 #000; z-index: 100; pointer-events: none; }
 
+        /* --- 📱 平板/筆電橫向模式 (Tablet Landscape Fix) --- */
+        /* 針對寬度介於 769px 到 1280px 之間，且高度較矮的裝置 */
+        @media (min-width: 769px) and (max-width: 1366px) {
+            /* 1. 上移敵人區塊，避免被遮擋 */
+            #battle-stage { top: 45px; transform: translateX(-50%) scale(0.9); }
+            
+            /* 2. 大幅下移玩家區塊，放到手牌上方 */
+            #player-hub { 
+                bottom: 240px; /* 從 320px 改為 240px，讓出血條位置 */
+                width: 400px;
+            }
+            
+            /* 3. 調整左側儀表板，避免太擠 */
+            #side-panel { left: 10px; transform: translateY(-50%) scale(0.85); transform-origin: left center; }
+            
+            /* 4. 調整結束按鈕 */
+            #end-btn { width: 90px; height: 90px; right: 20px; font-size: 0.9rem; }
+            
+            /* 5. 調整過場畫面文字大小 */
+            .victory-title { font-size: 3rem; }
+        }
+
+        /* --- 📱 手機直向模式 (Mobile Portrait) --- */
         @media (max-width: 768px) {
             body { background-position: center; background-size: cover; }
             .marquee-content span { font-size: 1rem; line-height: 35px; }
@@ -135,10 +157,9 @@
             #end-btn { width: 70px; height: 70px; right: 10px; top: auto; bottom: 240px; transform: none; font-size: 0.8rem; border-width: 3px; z-index: 50; }
             #action-log { font-size: 1.2rem; top: 35%; }
             #hand-counter { bottom: 200px; right: 10px; font-size: 1.2rem; }
-            /* 手機版牌堆顯示調整 */
             #pile-display { bottom: 200px; left: 10px; transform: scale(0.8); transform-origin: bottom left; }
             .victory-title { font-size: 2.5rem; }
-            #next-lvl-btn { width: 80%; right: 50%; transform: translate(50%, -50%); top: 60%; font-size: 1.5rem; }
+            #next-lvl-btn { padding: 15px 40px; font-size: 1.5rem; }
         }
     </style>
 </head>
@@ -173,14 +194,8 @@
     </div>
     
     <div id="pile-display">
-        <div class="pile-box">
-            <span class="pile-label">DRAW</span>
-            <span id="ui-draw-count" class="pile-count">20</span>
-        </div>
-        <div class="pile-box">
-            <span class="pile-label">DISC</span>
-            <span id="ui-disc-count" class="pile-count">0</span>
-        </div>
+        <div class="pile-box"><span class="pile-label">DRAW</span><span id="ui-draw-count" class="pile-count">20</span></div>
+        <div class="pile-box"><span class="pile-label">DISC</span><span id="ui-disc-count" class="pile-count">0</span></div>
     </div>
     <div id="hand-counter">0/5</div>
     
@@ -196,9 +211,10 @@
             playerMarkers: [],
             energy: 3, maxEnergy: 3, maxHandSize: 5,
             round: 1,
-            cardPool: [], // 原始牌庫定義
-            drawPile: [], // ★ 抽牌堆
-            discardPile: [], // ★ 棄牌堆
+            cardPool: [], 
+            drawPile: [], 
+            discardPile: [], 
+            currentHand: [], // ★ 新增：追蹤目前手牌
             enemyPool: [], waveConfig: [],
             currentWave: [], currentEnemy: null, enemyWaveIdx: 0, selectedCard: null
         };
@@ -206,7 +222,7 @@
         async function init() {
             Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (res) => {
                 state.cardPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], effect: r[1], cost: parseInt(r[2])||0, row: i+2 }));
-                initDeck(); // ★ 初始化牌庫
+                initDeck(); 
             }});
             Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (res) => {
                 state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], hp: parseInt(r[1])||10, type: parseInt(r[2])||1, actions: [r[4], r[5], r[6], r[7], r[8], r[9]].filter(a => a && a.trim() !== ""), row: i+2 }));
@@ -217,11 +233,10 @@
             }});
         }
 
-        // ★ 新增：初始化並洗牌
         function initDeck() {
             state.drawPile = [];
             state.discardPile = [];
-            // 為了模擬遊戲體驗，我們隨機從 pool 複製 20 張卡到 drawPile
+            state.currentHand = [];
             for(let i=0; i<20; i++) {
                 if(state.cardPool.length > 0) {
                     state.drawPile.push(state.cardPool[Math.floor(Math.random() * state.cardPool.length)]);
@@ -244,7 +259,7 @@
             if (!isNaN(valStr)) return parseFloat(valStr);
 
             const en = state.currentEnemy;
-            const handCount = document.querySelectorAll('#hand-area .card').length;
+            const handCount = state.currentHand.length; // 使用 state 追蹤
             const waveLeft = state.currentWave ? (state.currentWave.length - state.enemyWaveIdx) : 0;
 
             let expr = valStr.toString().toLowerCase()
@@ -257,10 +272,8 @@
                 .replace(/{loss}/g, (state.playerMaxHP - state.playerHP))
                 .replace(/{hand}/g, handCount)
                 .replace(/{max_hand}/g, state.maxHandSize)
-                // 新增變數
                 .replace(/{draw_pile}/g, state.drawPile.length)
                 .replace(/{disc_pile}/g, state.discardPile.length)
-                
                 .replace(/{round}/g, state.round)
                 .replace(/{wave}/g, waveLeft)
                 .replace(/{en_hp}/g, en ? en.curHP : 0)
@@ -286,7 +299,6 @@
         function spawnNext() {
             document.body.classList.remove('boss-mode');
             
-            // ★ 修改：如果 wave 結束，顯示過場畫面
             if(state.enemyWaveIdx >= state.currentWave.length) {
                 document.getElementById('victory-screen').style.display = 'flex';
                 return;
@@ -305,24 +317,20 @@
             updateUI();
         }
 
-        // ★ 新增：按鈕觸發下一關
         function goToNextLevel() {
             document.getElementById('victory-screen').style.display = 'none';
             state.round++;
             generateWave();
         }
 
-        // ★ 修改：從 drawPile 抽牌
         function draw(n) {
             const area = document.getElementById('hand-area');
-            const currentHandCount = area.children.length;
-            const slotsLeft = state.maxHandSize - currentHandCount;
+            const slotsLeft = state.maxHandSize - state.currentHand.length;
             let toDraw = Math.min(n, slotsLeft);
             
             if (toDraw <= 0 && n > 0) { showLog("HAND FULL!"); return; }
 
             for(let i=0; i<toDraw; i++){
-                // 檢查抽牌堆，如果空了就洗牌
                 if(state.drawPile.length === 0) {
                     if(state.discardPile.length > 0) {
                         state.drawPile = [...state.discardPile];
@@ -335,7 +343,9 @@
                     }
                 }
                 
-                const d = state.drawPile.pop(); // 取出一張
+                const d = state.drawPile.pop();
+                // ★ 新增：將抽到的牌加入手牌陣列
+                state.currentHand.push(d); 
                 
                 const el = document.createElement('div');
                 el.className = 'card';
@@ -364,6 +374,10 @@
                 el.innerHTML = `<div class="card-cost">${d.cost}</div><div class="card-name">${d.name}</div><div class="card-desc">${niceDesc}</div>`;
                 const rot = (Math.random() * 6 - 3).toFixed(1);
                 el.style.transform = `rotate(${rot}deg)`;
+                
+                // 綁定卡牌物件與 DOM 元素，方便移除
+                el.dataset.cardId = state.currentHand.length - 1; 
+
                 el.onclick = (e) => { 
                     e.stopPropagation(); 
                     if(state.energy >= d.cost) { select(el, d); if(navigator.vibrate) navigator.vibrate(10); } 
@@ -451,10 +465,14 @@
                 if(tag === 'sdmg') { state.playerHP -= val; showLog(`SACRIFICE: ${val}`); }
             }
 
-            // ★ 修改：處理棄牌與一次性卡牌邏輯
+            // ★ 新增：打出的牌處理
+            // 1. 從手牌陣列中移除
+            const handIdx = state.currentHand.indexOf(d);
+            if (handIdx > -1) state.currentHand.splice(handIdx, 1);
+            
+            // 2. 判斷去向
             if (d.effect.includes('[#once]')) {
                 showLog("BANISHED");
-                // 不放入 discardPile，相當於移除
             } else {
                 state.discardPile.push(d);
             }
@@ -489,6 +507,19 @@
 
         document.getElementById('end-btn').onclick = () => {
             if(!state.currentEnemy) return;
+
+            // ★ 新增：回合結束時，棄掉所有手牌
+            const handArea = document.getElementById('hand-area');
+            // 清空 DOM
+            handArea.innerHTML = '';
+            // 將剩下的手牌移到棄牌堆
+            state.currentHand.forEach(card => {
+                // 如果有 retain 等機制可以在這裡判斷，目前全部丟棄
+                state.discardPile.push(card);
+            });
+            state.currentHand = []; // 清空手牌陣列
+
+            // --- 原本的回合結算邏輯 ---
             if(state.currentEnemy.poison > 0) {
                 const pDmg = state.currentEnemy.poison;
                 state.currentEnemy.curHP -= pDmg;
@@ -543,10 +574,7 @@
         }
 
         function updateUI() {
-            const handCount = document.querySelectorAll('#hand-area .card').length;
-            document.getElementById('hand-counter').innerText = `${handCount}/${state.maxHandSize}`;
-            
-            // ★ 新增：更新抽牌堆與棄牌堆顯示
+            document.getElementById('hand-counter').innerText = `${state.currentHand.length}/${state.maxHandSize}`;
             document.getElementById('ui-draw-count').innerText = state.drawPile.length;
             document.getElementById('ui-disc-count').innerText = state.discardPile.length;
 

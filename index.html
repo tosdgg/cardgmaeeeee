@@ -1,27 +1,26 @@
 <!DOCTYPE html><html lang="zh-TW">
     <head>
     <meta charset="UTF-8">
-    <title>Steampunk Duelist v6.0 - Fixed Logic</title>
+    <title>Steampunk Duelist v7.0 - Tactics & Status</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
         :root {
             --brass: #b5a642; --bronze: #cd7f32; --gold: #ffd700;
             --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
-            --danger: #ff4444; --success: #44ff44;
+            --danger: #ff4444; --success: #44ff44; --shield: #00aaff; --poison: #bf00ff;
         }
 
         body {
             margin: 0; padding: 0; background: #120f0d;
             color: var(--parchment); font-family: 'IM Fell English SC', serif;
-            overflow: hidden; height: 100vh;
+            overflow: hidden; height: 100vh; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
-            transition: background 0.1s;
         }
 
         /* --- 戰鬥佈局 --- */
         #battle-stage {
-            position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
             display: flex; align-items: center; gap: 40px;
         }
 
@@ -30,47 +29,69 @@
             border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* 敵人方塊與動態邊框 */
+        /* 敵人區塊 */
         .enemy-box {
             width: 420px; background: #222; border: 6px ridge var(--bronze);
             padding: 25px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s;
         }
+        .tier-1 { border-color: #cd7f32 !important; }
+        .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
+        .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
         
-        /* 敵人類型 CSS */
-        .tier-1 { border-color: #cd7f32 !important; animation: idle 2s infinite; }
-        .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); animation: shake-mid 0.5s infinite; }
-        .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); animation: shake-boss 0.15s infinite; }
+        .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
 
-        @keyframes idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-        @keyframes shake-mid { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } }
-        @keyframes shake-boss { 0% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } }
-        @keyframes damage-flash { 0% { background-color: rgba(255,0,0,0.3); } 100% { background-color: transparent; } }
-
-        .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); background: rgba(0,243,255,0.05); }
+        /* --- 狀態顯示 (Shield/Poison) --- */
+        .status-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 2px 8px; border-radius: 10px; font-weight: bold; font-family: sans-serif;
+            font-size: 0.9rem; margin-right: 5px; box-shadow: 1px 1px 3px #000;
+        }
+        .status-shield { background: var(--shield); color: #fff; border: 1px solid #fff; }
+        .status-poison { background: var(--poison); color: #fff; border: 1px solid #e0e; }
 
         /* --- 左側儀表板 --- */
         #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; }
         .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
         /* --- 卡牌 --- */
-        #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; }
-        .card { width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -5px; cursor: pointer; position: relative; transition: 0.2s; background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png'); }
-        .card.selected { transform: translateY(-60px); border-color: var(--steam-blue); box-shadow: 0 10px 30px #000; }
-        .card-cost { position: absolute; top: -15px; left: -15px; width: 40px; height: 40px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.4rem; }
-        .card-effect-num { margin-top: 40px; text-align: center; font-size: 1.8rem; font-family: 'Rye'; color: var(--bronze); }
-        .card-row { position: absolute; bottom: 8px; right: 12px; font-size: 0.8rem; color: #842; }
+        #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; pointer-events: none; }
+        .card { 
+            width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; 
+            border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -15px; 
+            cursor: pointer; position: relative; transition: 0.25s; 
+            background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
+            pointer-events: auto; box-shadow: -5px 5px 15px rgba(0,0,0,0.5);
+        }
+        .card:hover { transform: translateY(-30px) rotate(0deg) !important; z-index: 100; margin: 0 5px; }
+        .card.selected { transform: translateY(-70px) scale(1.1) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
+        
+        .card-cost { position: absolute; top: -15px; left: -15px; width: 40px; height: 40px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.4rem; z-index: 2; }
+        .card-name { padding:15px 5px; text-align:center; font-family:'Rye'; font-size:1.0rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
+        .card-desc { margin-top: 20px; text-align: center; font-size: 0.9rem; color: #421; padding: 0 10px; line-height: 1.4; font-weight: bold;}
+        
+        /* 標籤視覺化 */
+        .tag-badge { display: inline-block; padding: 2px 4px; border-radius: 4px; font-size: 0.8rem; margin: 2px; color: #fff; }
+        .bg-dmg { background: #aa4444; }
+        .bg-def { background: #0088cc; }
+        .bg-heal { background: #44aa44; }
+        .bg-psn { background: #8800cc; }
+        .bg-eng { background: #ccaa00; }
+        .bg-draw { background: #555; }
+        .bg-sdmg { background: #550000; border: 1px dashed #f00; }
 
-        /* --- 血量條 --- */
-        .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; }
-        .hp-fill { height: 100%; width: 100%; transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        /* --- 血量與訊息 --- */
+        .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; position: relative; }
+        .hp-fill { height: 100%; width: 100%; transition: 0.4s; position: absolute; left: 0; top: 0; }
+        .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2;}
 
-        #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; }
-        #player-action-log { position: absolute; top: -30px; left: 0; width: 100%; text-align: center; color: var(--danger); font-family: 'Rye'; text-shadow: 2px 2px 0 #000; opacity: 0; transition: 0.5s; }
+        #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; }
+        #action-log { position: absolute; top: 120px; width: 100%; text-align: center; color: #fff; font-family: 'Rye'; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 500; font-size: 1.5rem; }
 
-        #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; }
-        #end-btn:hover { background: #b87333; }
-        #end-btn:active { transform: translateY(-50%) scale(0.95); }
+        #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; }
+        #end-btn:hover { background: #b87333; transform: translateY(-50%) scale(1.05); }
     </style></head><body>
+
+    <div id="action-log"></div>
 
     <div id="battle-stage">
         <div class="round-gauge">
@@ -79,8 +100,15 @@
         </div>
         <div class="enemy-box tier-1" id="enemy-target">
             <div id="ui-en-row" style="font-size:0.7rem; color: #888;">#--</div>
-            <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem;">LOADING SYSTEM...</div>
-            <div class="hp-container"><div id="ui-en-hp-fill" class="hp-fill" style="background: var(--danger);"></div></div>
+            <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem;">LOADING...</div>
+            
+            <div style="display:flex; gap:5px; height: 20px;">
+                <div id="ui-en-poison" class="status-icon status-poison" style="display:none">☠ 0</div>
+            </div>
+
+            <div class="hp-container">
+                <div id="ui-en-hp-fill" class="hp-fill" style="background: var(--danger);"></div>
+            </div>
             <div id="ui-en-hp-text" style="text-align:right; font-weight:bold; font-size: 0.9rem;">-- / --</div>
             <div id="ui-en-intent" style="color:var(--steam-blue); font-size:0.8rem; margin-top:5px; height:1rem;"></div>
         </div>
@@ -92,21 +120,26 @@
             <span id="ui-energy" style="font-family:'Rye'; font-size:2rem; color:var(--steam-blue)">3/3</span>
         </div>
         <div class="gauge-circle">
-            <span style="font-size:0.7rem">WAVE LEFT</span>
+            <span style="font-size:0.7rem">WAVE</span>
             <span id="ui-wave-left" style="font-family:'Rye'; font-size:2rem">--</span>
         </div>
     </div>
 
     <div id="player-hub">
-        <div id="player-action-log">TOOK 10 DAMAGE!</div>
         <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
-            <span>PLAYER_SYSTEM_CORE</span>
+            <span>PLAYER_CORE</span>
             <span id="ui-pl-hp-text">100 / 100</span>
         </div>
-        <div class="hp-container"><div id="ui-pl-hp-fill" class="hp-fill" style="background: var(--success);"></div></div>
+        <div style="display:flex; gap:5px; margin-bottom:5px;">
+            <div id="ui-pl-shield" class="status-icon status-shield" style="display:none">🛡 0</div>
+        </div>
+        <div class="hp-container">
+            <div id="ui-pl-hp-fill" class="hp-fill" style="background: var(--success);"></div>
+            <div id="ui-pl-shield-fill" class="shield-fill"></div>
+        </div>
     </div>
 
-    <button id="end-btn">END<br>ACTION</button>
+    <button id="end-btn">END<br>TURN</button>
     <div id="hand-area"></div>
 
     <script>
@@ -116,47 +149,44 @@
         const GID_CONFIG = "1319509950";
 
         let state = {
-            playerHP: 100, energy: 3, round: 1,
+            playerHP: 100, playerMaxHP: 100,
+            playerShield: 0, 
+            energy: 3, maxEnergy: 3,
+            round: 1,
             cardPool: [], enemyPool: [], waveConfig: [],
             currentWave: [], currentEnemy: null, enemyWaveIdx: 0,
             selectedCard: null
         };
 
+        // 模擬新卡牌 (在 CSV 未更新前測試用)
+        const DEMO_CARDS = [
+            { name: "Iron Plating", effect: "[#def 15]", cost: 1, row: 99 },
+            { name: "Poison Dart", effect: "[#dmg 5] [#psn 3]", cost: 1, row: 99 },
+            { name: "Overclock", effect: "[#eng 2] [#sdmg 5]", cost: 0, row: 99 },
+            { name: "Supply Drop", effect: "[#draw 2]", cost: 1, row: 99 },
+            { name: "Shield Bash", effect: "[#def 10] [#dmg 10]", cost: 2, row: 99 }
+        ];
+
         async function init() {
-            // 策略：使用 header: false 來嚴格根據欄位索引 (Index) 讀取，避免標題錯誤
-            
-            // 1. 讀取卡片 (GID 0)
             Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (res) => {
-                // 跳過第一列標題 (slice(1))
                 state.cardPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({
-                    name: r[0],         // A欄
-                    effect: r[1],       // B欄
-                    cost: parseInt(r[2])||0, // C欄
-                    row: i+2
+                    name: r[0], effect: r[1], cost: parseInt(r[2])||0, row: i+2
                 }));
+                // ★ 合併測試卡牌
+                state.cardPool = [...state.cardPool, ...DEMO_CARDS];
                 draw(5);
             }});
 
-            // 2. 讀取敵人 (GID 322780304)
             Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (res) => {
-                state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>{
-                    // A=0, B=1, C=2 (Type), D=3 (Skip), E~J=4~9 (Actions)
-                    return { 
-                        name: r[0], 
-                        hp: parseInt(r[1])||10, 
-                        type: parseInt(r[2])||1, 
-                        actions: [r[4], r[5], r[6], r[7], r[8], r[9]].filter(a => a && a.trim() !== ""), 
-                        row: i+2 
-                    };
-                });
+                state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ 
+                    name: r[0], hp: parseInt(r[1])||10, type: parseInt(r[2])||1, 
+                    actions: [r[4], r[5], r[6], r[7], r[8], r[9]].filter(a => a && a.trim() !== ""), 
+                    row: i+2 
+                }));
                 
-                // 3. 讀取波次配置 (GID 1319509950)
                 Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: false, complete: (res) => {
-                    // A=Normal, B=Elite, C=Boss
                     state.waveConfig = res.data.slice(1).map(r => ({
-                        n: parseInt(r[0])||0, 
-                        e: parseInt(r[1])||0, 
-                        b: parseInt(r[2])||0
+                        n: parseInt(r[0])||0, e: parseInt(r[1])||0, b: parseInt(r[2])||0
                     }));
                     generateWave();
                 }});
@@ -165,21 +195,13 @@
 
         function generateWave() {
             const cfg = state.waveConfig[state.round - 1];
-            if(!cfg) {
-                alert("All Challenges Complete! You survived!");
-                return;
-            }
-            
+            if(!cfg) return alert("Victory!");
             let wave = [];
-            // 嚴格比對 type (1, 2, 3)
             const add = (type, count) => {
                 const p = state.enemyPool.filter(en => en.type === type);
-                for(let i=0; i<count; i++) {
-                    if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]});
-                }
+                for(let i=0; i<count; i++) if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]});
             };
             add(1, cfg.n); add(2, cfg.e); add(3, cfg.b);
-            
             state.currentWave = wave;
             state.enemyWaveIdx = 0;
             spawnNext();
@@ -188,19 +210,14 @@
         function spawnNext() {
             if(state.enemyWaveIdx < state.currentWave.length) {
                 const raw = state.currentWave[state.enemyWaveIdx];
-                state.currentEnemy = { ...raw, curHP: raw.hp, actionStep: 0 };
+                // 加入 poison 狀態屬性
+                state.currentEnemy = { ...raw, curHP: raw.hp, actionStep: 0, poison: 0 };
                 state.enemyWaveIdx++;
                 
-                // 更新 UI 邊框與類別
                 const box = document.getElementById('enemy-target');
-                // 移除舊 class，保留基礎
-                box.className = 'enemy-box';
-                // 加入新 class
-                box.classList.add(`tier-${state.currentEnemy.type}`);
-                
+                box.className = 'enemy-box tier-' + state.currentEnemy.type;
                 updateUI();
             } else {
-                // 當前波次結束，進入下一 Round
                 state.round++;
                 generateWave();
             }
@@ -208,19 +225,31 @@
 
         function draw(n) {
             const area = document.getElementById('hand-area');
-            area.innerHTML = '';
             for(let i=0; i<n; i++){
                 const d = state.cardPool[Math.floor(Math.random()*state.cardPool.length)];
                 if(!d) continue;
                 const el = document.createElement('div');
                 el.className = 'card';
-                // 視覺化：只顯示數字
-                const showEff = d.effect.replace(/\[#\w+\s+(-?\d+)\]/g, '$1');
+                
+                // ★ 這裡進行標籤美化轉換
+                let niceDesc = d.effect;
+                niceDesc = niceDesc.replace(/\[#dmg\s+(\d+)\]/g, '<span class="tag-badge bg-dmg">DMG $1</span>');
+                niceDesc = niceDesc.replace(/\[#def\s+(\d+)\]/g, '<span class="tag-badge bg-def">DEF $1</span>');
+                niceDesc = niceDesc.replace(/\[#heal\s+(\d+)\]/g, '<span class="tag-badge bg-heal">HEAL $1</span>');
+                niceDesc = niceDesc.replace(/\[#psn\s+(\d+)\]/g, '<span class="tag-badge bg-psn">PSN $1</span>');
+                niceDesc = niceDesc.replace(/\[#eng\s+(\d+)\]/g, '<span class="tag-badge bg-eng">ENG +$1</span>');
+                niceDesc = niceDesc.replace(/\[#draw\s+(\d+)\]/g, '<span class="tag-badge bg-draw">DRAW $1</span>');
+                niceDesc = niceDesc.replace(/\[#sdmg\s+(\d+)\]/g, '<span class="tag-badge bg-sdmg">HURT $1</span>');
+
                 el.innerHTML = `
                     <div class="card-cost">${d.cost}</div>
-                    <div style="padding:10px;text-align:center;font-family:'Rye';font-size:1.1rem;border-bottom:1px solid #ccc">${d.name}</div>
-                    <div class="card-effect-num">${showEff}</div>
-                    <div class="card-row">Row:${d.row}</div>`;
+                    <div class="card-name">${d.name}</div>
+                    <div class="card-desc">${niceDesc}</div>
+                `;
+                
+                // 讓卡片有點隨機旋轉，增加手牌感
+                const rot = (Math.random() * 6 - 3).toFixed(1);
+                el.style.transform = `rotate(${rot}deg)`;
                 
                 el.onclick = (e) => { 
                     e.stopPropagation(); 
@@ -235,8 +264,14 @@
             cancel();
             state.selectedCard = {el, d};
             el.classList.add('selected');
-            document.getElementById('enemy-target').classList.add('target-active');
-            document.getElementById('player-hub').classList.add('target-active');
+            
+            // 根據卡片效果決定可以點誰
+            // 簡單起見，如果卡片有 dmg/psn 亮敵人，有 heal/def/eng/draw 亮玩家
+            const hasOffense = /\[#(dmg|psn)/.test(d.effect);
+            if(hasOffense) document.getElementById('enemy-target').classList.add('target-active');
+            
+            const hasSelf = /\[#(heal|def|eng|draw|sdmg)/.test(d.effect);
+            if(hasSelf) document.getElementById('player-hub').classList.add('target-active');
         }
 
         function cancel() {
@@ -245,101 +280,205 @@
             document.querySelectorAll('.target-active').forEach(e => e.classList.remove('target-active'));
         }
 
-        document.getElementById('enemy-target').onclick = () => { if(state.selectedCard) use("enemy"); };
-        document.getElementById('player-hub').onclick = () => { if(state.selectedCard) use("player"); };
+        // 綁定點擊事件
+        document.getElementById('enemy-target').onclick = () => { if(state.selectedCard) applyCardEffect("enemy"); };
+        document.getElementById('player-hub').onclick = () => { if(state.selectedCard) applyCardEffect("player"); };
 
-        function use(target) {
+        function applyCardEffect(target) {
             const d = state.selectedCard.d;
-            state.energy -= d.cost;
             
-            // 解析效果
-            const reg = /\[#(\w+)\s*(-?\d+)\]/g; // 允許空格彈性
+            // 簡單的驗證：如果你點敵人，但卡片全是補血，這是不允許的 (這裡暫簡化，允許空揮)
+            state.energy -= d.cost;
+
+            const reg = /\[#(\w+)\s*(-?\d+)\]/g; 
             let m;
             while((m = reg.exec(d.effect)) !== null) {
                 const tag = m[1], val = parseInt(m[2]);
-                if(tag === 'dmg' && target === 'enemy') state.currentEnemy.curHP -= val;
-                if(tag === 'heal') state.playerHP = Math.min(100, state.playerHP + val);
+                
+                // --- 標籤邏輯核心 ---
+                if(tag === 'dmg' && target === 'enemy') {
+                    damageEnemy(val);
+                }
+                if(tag === 'psn' && target === 'enemy') {
+                    state.currentEnemy.poison += val;
+                    showLog(`POISON APPLIED: ${val}`);
+                }
+                if(tag === 'heal') {
+                    state.playerHP = Math.min(state.playerMaxHP, state.playerHP + val);
+                    showLog(`HEALED ${val}`);
+                }
+                if(tag === 'def') {
+                    state.playerShield += val;
+                    showLog(`SHIELD UP: ${val}`);
+                }
+                if(tag === 'eng') {
+                    state.energy = Math.min(10, state.energy + val); // 上限暫定10
+                    showLog(`ENERGY +${val}`);
+                }
+                if(tag === 'draw') {
+                    draw(val);
+                    showLog(`DRAW ${val}`);
+                }
+                if(tag === 'sdmg') {
+                    // 自殘無視護盾
+                    state.playerHP -= val;
+                    showLog(`SACRIFICED ${val} HP`);
+                }
             }
+
             state.selectedCard.el.remove();
             cancel();
-            
-            if(state.currentEnemy.curHP <= 0) spawnNext();
+            checkWin();
             updateUI();
         }
 
-        // --- 敵人反擊邏輯修復 ---
-        function enemyCounter() {
-            if(!state.currentEnemy || state.currentEnemy.curHP <= 0) return;
+        function damageEnemy(amt) {
+            state.currentEnemy.curHP -= amt;
+            showLog(`HIT ENEMY: ${amt}`);
+            // 視覺閃爍
+            const box = document.getElementById('enemy-target');
+            box.style.filter = "brightness(2) sepia(1) hue-rotate(-50deg) saturate(5)";
+            setTimeout(()=> box.style.filter = "", 100);
+        }
+
+        function checkWin() {
+            if(state.currentEnemy && state.currentEnemy.curHP <= 0) {
+                spawnNext();
+            }
+        }
+
+        // --- 玩家受傷邏輯 (含護盾) ---
+        function playerTakeDamage(amt) {
+            let remain = amt;
+            if(state.playerShield > 0) {
+                if(state.playerShield >= remain) {
+                    state.playerShield -= remain;
+                    remain = 0;
+                    showLog(`BLOCKED!`);
+                } else {
+                    remain -= state.playerShield;
+                    state.playerShield = 0;
+                }
+            }
+            if(remain > 0) {
+                state.playerHP -= remain;
+                showLog(`TOOK ${remain} DMG`);
+                document.body.style.animation = "shake 0.3s"; // 需定義 shake
+            }
+            updateUI();
+        }
+
+        // --- 回合結束流程 ---
+        document.getElementById('end-btn').onclick = () => {
+            // 1. 敵人中毒傷害
+            if(state.currentEnemy && state.currentEnemy.poison > 0) {
+                const dmg = state.currentEnemy.poison;
+                damageEnemy(dmg);
+                state.currentEnemy.poison = Math.max(0, state.currentEnemy.poison - 1);
+                showLog(`POISON TICK: ${dmg}`);
+                if(state.currentEnemy.curHP <= 0) { 
+                    spawnNext(); 
+                    startPlayerTurn(); // 敵人死了就直接輪到玩家
+                    return; 
+                }
+            }
+
+            // 2. 敵人行動
+            enemyAction();
+
+            // 3. 準備下回合
+            startPlayerTurn();
+        };
+
+        function enemyAction() {
+            if(!state.currentEnemy) return;
             const acts = state.currentEnemy.actions;
             if(!acts.length) return;
             
             const currentAct = acts[state.currentEnemy.actionStep % acts.length];
-            
-            // 解析動作 [#dmg 10]
             const reg = /\[#(\w+)\s*(-?\d+)\]/g; 
             let m;
-            let tookDamage = 0;
-
             while((m = reg.exec(currentAct)) !== null) {
                 const tag = m[1], val = parseInt(m[2]);
-                if(tag === 'dmg') {
-                    state.playerHP -= val;
-                    tookDamage += val;
-                }
+                if(tag === 'dmg') playerTakeDamage(val);
+                // 敵人也可以補血或給自己護盾 (如果有需要擴充)
             }
-
-            // 傷害反饋視覺
-            if(tookDamage > 0) {
-                const log = document.getElementById('player-action-log');
-                log.innerText = `TOOK ${tookDamage} DAMAGE!`;
-                log.style.opacity = 1;
-                document.body.style.animation = "damage-flash 0.3s";
-                setTimeout(() => { 
-                    log.style.opacity = 0; 
-                    document.body.style.animation = "";
-                }, 1000);
-            }
-
             state.currentEnemy.actionStep++;
         }
 
-        document.getElementById('end-btn').onclick = () => {
-            enemyCounter(); // 先讓敵人攻擊
-            state.energy = 3; // 重置能量
-            draw(5); // 補牌
+        function startPlayerTurn() {
+            // 重置護盾? (通常機制是回合開始護盾歸零，若要保留可移除這行)
+            state.playerShield = 0; 
+            
+            state.energy = state.maxEnergy;
+            draw(5); // 補牌 (簡單版：直接抽5張)
             updateUI();
-        };
+        }
+
+        function showLog(msg) {
+            const log = document.getElementById('action-log');
+            log.innerText = msg;
+            log.style.opacity = 1;
+            log.style.transform = "translateY(-20px)";
+            log.style.transition = "0s";
+            
+            setTimeout(()=>{
+                log.style.transition = "1s";
+                log.style.opacity = 0;
+                log.style.transform = "translateY(0)";
+            }, 800);
+        }
 
         function updateUI() {
+            // Enemy
             if(state.currentEnemy) {
                 document.getElementById('ui-en-name').innerText = state.currentEnemy.name;
-                document.getElementById('ui-en-row').innerText = `Sheet Row: ${state.currentEnemy.row}`;
+                document.getElementById('ui-en-row').innerText = `Row: ${state.currentEnemy.row}`;
                 
                 const enPct = (state.currentEnemy.curHP / state.currentEnemy.hp) * 100;
                 document.getElementById('ui-en-hp-fill').style.width = Math.max(0, enPct) + '%';
                 document.getElementById('ui-en-hp-text').innerText = `${state.currentEnemy.curHP} / ${state.currentEnemy.hp}`;
+                
+                // Poison UI
+                const pUI = document.getElementById('ui-en-poison');
+                if(state.currentEnemy.poison > 0) {
+                    pUI.style.display = "flex";
+                    pUI.innerText = `☠ ${state.currentEnemy.poison}`;
+                } else {
+                    pUI.style.display = "none";
+                }
 
-                // 顯示下一個動作預告 (Bonus UI)
+                // Intent
                 const acts = state.currentEnemy.actions;
-                if(acts.length > 0) {
-                    const nextAct = acts[state.currentEnemy.actionStep % acts.length];
-                    document.getElementById('ui-en-intent').innerText = `INTENT: ${nextAct}`;
+                if(acts.length) {
+                    document.getElementById('ui-en-intent').innerText = `INTENT: ${acts[state.currentEnemy.actionStep % acts.length]}`;
                 }
             }
 
             document.getElementById('ui-round').innerText = state.round;
-            document.getElementById('ui-energy').innerText = `${state.energy}/3`;
+            document.getElementById('ui-energy').innerText = `${state.energy}/${state.maxEnergy}`;
             document.getElementById('ui-wave-left').innerText = Math.max(0, state.currentWave.length - state.enemyWaveIdx);
             
-            // 玩家血量
-            document.getElementById('ui-pl-hp-text').innerText = `${state.playerHP} / 100`;
-            document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, state.playerHP) + '%';
+            // Player
+            document.getElementById('ui-pl-hp-text').innerText = `${state.playerHP} / ${state.playerMaxHP}`;
+            document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, (state.playerHP/state.playerMaxHP)*100) + '%';
             
+            // Shield UI
+            const sUI = document.getElementById('ui-pl-shield');
+            const sFill = document.getElementById('ui-pl-shield-fill');
+            if(state.playerShield > 0) {
+                sUI.style.display = "flex";
+                sUI.innerText = `🛡 ${state.playerShield}`;
+                // 護盾條疊加顯示
+                sFill.style.width = Math.min(100, (state.playerShield/state.playerMaxHP)*100) + '%';
+            } else {
+                sUI.style.display = "none";
+                sFill.style.width = '0%';
+            }
+
             if(state.playerHP <= 0) {
-                setTimeout(() => {
-                    alert("SYSTEM FAILURE. Game Over.");
-                    location.reload();
-                }, 100);
+                alert("SYSTEM FAILURE. RELOAD.");
+                location.reload();
             }
         }
 
@@ -347,4 +486,4 @@
         window.onload = init;
     </script>
     </body>
-    </html>
+</html>

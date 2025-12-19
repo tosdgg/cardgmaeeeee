@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="zh-TW"><head>
     <meta charset="UTF-8">
-    <title>Steampunk Duelist v8.0 - Full Tactics</title>
+    <title>Steampunk Duelist v8.1 - Boss Update</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -9,6 +9,9 @@
             --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
             --danger: #ff4444; --success: #44ff44; --shield: #00aaff; --poison: #bf00ff;
             --str: #ff9900; --vuln: #ff0055; --weak: #88cc00;
+            /* 新增 BOSS 相關變數 */
+            --boss-purple: #b300ff; 
+            --boss-red-bg: #3a0000;
         }
 
         body {
@@ -16,11 +19,41 @@
             color: var(--parchment); font-family: 'IM Fell English SC', serif;
             overflow: hidden; height: 100vh; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
+            transition: background-image 1.5s ease-in-out; /* 背景切換動畫 */
+        }
+
+        /* --- BOSS 模式特效 --- */
+        body.boss-mode {
+            background-image: radial-gradient(circle, #7a0000 0%, var(--boss-red-bg) 100%) !important;
+        }
+
+        /* 跑馬燈容器 */
+        #marquee-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 35px;
+            background: var(--danger); border-bottom: 3px double var(--gold);
+            color: #fff; overflow: hidden; z-index: 9999;
+            display: none; /* 預設隱藏 */
+            box-shadow: 0 0 20px var(--danger);
+        }
+        body.boss-mode #marquee-container { display: block; }
+
+        .marquee-content {
+            display: flex; width: fit-content;
+            animation: marquee-scroll 10s linear infinite;
+        }
+        .marquee-content span {
+            white-space: nowrap; font-family: 'Rye', cursive; font-size: 1.3rem;
+            line-height: 35px; padding-right: 50px; text-shadow: 2px 2px 4px #000;
+        }
+        @keyframes marquee-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
         }
 
         /* --- 戰鬥佈局 --- */
         #battle-stage {
-            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: 60px; /* 下移一點避開跑馬燈 */
+            left: 50%; transform: translateX(-50%);
             display: flex; align-items: center; gap: 40px;
         }
 
@@ -39,6 +72,17 @@
         .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
         .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
         
+        /* 新增 Tier 4 (BOSS) 樣式 */
+        .tier-4 {
+            border-color: var(--boss-purple) !important;
+            box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple);
+            animation: boss-pulse 1.5s infinite alternate ease-in-out;
+        }
+        @keyframes boss-pulse {
+            from { box-shadow: 0 0 30px var(--boss-purple), inset 0 0 10px var(--boss-purple); }
+            to   { box-shadow: 0 0 60px var(--boss-purple), inset 0 0 25px var(--boss-purple); filter: brightness(1.1); }
+        }
+        
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
 
         /* --- 狀態顯示列 --- */
@@ -48,7 +92,6 @@
             padding: 0 6px; border-radius: 4px; font-weight: bold; font-family: sans-serif;
             font-size: 0.8rem; box-shadow: 1px 1px 2px #000; color: #fff; border: 1px solid rgba(255,255,255,0.3);
         }
-        /* 狀態顏色 */
         .st-poison { background: var(--poison); }
         .st-shield { background: var(--shield); }
         .st-str    { background: var(--str); }
@@ -76,36 +119,31 @@
         .card-name { padding:15px 5px; text-align:center; font-family:'Rye'; font-size:1.0rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
         .card-desc { margin-top: 20px; text-align: center; font-size: 0.85rem; color: #421; padding: 0 10px; line-height: 1.3; font-weight: bold;}
         
-        /* 標籤視覺化 - 顏色定義 */
         .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.75rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
-        .bg-dmg { background: #aa4444; }
-        .bg-def { background: #0088cc; }
-        .bg-heal { background: #44aa44; }
-        .bg-psn { background: #8800cc; }
-        .bg-eng { background: #ccaa00; }
-        .bg-draw { background: #555; }
-        .bg-sdmg { background: #550000; border: 1px dashed #f00; }
-        
-        /* 新標籤顏色 */
-        .bg-str { background: #ff9900; }
-        .bg-weak { background: #88cc00; color: #000; text-shadow: none; }
-        .bg-vuln { background: #ff0055; }
-        .bg-stun { background: #333; border: 1px double #fff; }
-        .bg-drain { background: #aa0044; }
+        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; }
+        .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; }
+        .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; }
+        .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; }
+        .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; }
         .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; }
         .bg-maxhp { background: #228822; border: 1px solid #aaffaa; }
 
-        /* --- 血量與訊息 --- */
         .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; position: relative; }
         .hp-fill { height: 100%; width: 100%; transition: 0.4s; position: absolute; left: 0; top: 0; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2;}
 
         #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; }
         #action-log { position: absolute; top: 120px; width: 100%; text-align: center; color: #fff; font-family: 'Rye'; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 500; font-size: 1.5rem; }
-
         #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; }
         #end-btn:hover { background: #b87333; transform: translateY(-50%) scale(1.05); }
     </style></head><body>
+
+    <div id="marquee-container">
+        <div class="marquee-content">
+            <span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+            <span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+        </div>
+    </div>
 
     <div id="action-log"></div>
 
@@ -117,10 +155,7 @@
         <div class="enemy-box tier-1" id="enemy-target">
             <div id="ui-en-row" style="font-size:0.7rem; color: #888;">#--</div>
             <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem;">LOADING...</div>
-            
-            <div id="en-status" class="status-bar">
-                </div>
-
+            <div id="en-status" class="status-bar"></div>
             <div class="hp-container">
                 <div id="ui-en-hp-fill" class="hp-fill" style="background: var(--danger);"></div>
             </div>
@@ -145,8 +180,7 @@
             <span>PLAYER_CORE</span>
             <span id="ui-pl-hp-text">100 / 100</span>
         </div>
-        <div id="pl-status" class="status-bar" style="margin-bottom:5px;">
-            </div>
+        <div id="pl-status" class="status-bar" style="margin-bottom:5px;"></div>
         <div class="hp-container">
             <div id="ui-pl-hp-fill" class="hp-fill" style="background: var(--success);"></div>
             <div id="ui-pl-shield-fill" class="shield-fill"></div>
@@ -157,16 +191,15 @@
     <div id="hand-area"></div>
 
     <script>
+        // 您的 Google Sheet ID
         const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
         const GID_CARD = "0";
-        const GID_ENEMY = "322780304";
+        const GID_ENEMY = "322780304"; // 地圖試算表的 gid (您給的)
         const GID_CONFIG = "1319509950";
 
         let state = {
             playerHP: 100, playerMaxHP: 100,
-            playerShield: 0, 
-            playerStr: 0,    // New: Strength
-            
+            playerShield: 0, playerStr: 0,
             energy: 3, maxEnergy: 3,
             round: 1,
             cardPool: [], enemyPool: [], waveConfig: [],
@@ -175,16 +208,13 @@
         };
 
         async function init() {
-            // 讀取卡片
             Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (res) => {
                 state.cardPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({
                     name: r[0], effect: r[1], cost: parseInt(r[2])||0, row: i+2
                 }));
-                // ★ 注意：已移除 DEMO_CARDS，現在完全依賴您的試算表
                 draw(5);
             }});
 
-            // 讀取敵人
             Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (res) => {
                 state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ 
                     name: r[0], hp: parseInt(r[1])||10, type: parseInt(r[2])||1, 
@@ -192,10 +222,13 @@
                     row: i+2 
                 }));
                 
-                // 讀取配置
                 Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: false, complete: (res) => {
+                    // ★ 修改：讀取第 4 欄 (r[3]) 作為 Boss (Type 4) 的數量
                     state.waveConfig = res.data.slice(1).map(r => ({
-                        n: parseInt(r[0])||0, e: parseInt(r[1])||0, b: parseInt(r[2])||0
+                        n: parseInt(r[0])||0, // Type 1
+                        e: parseInt(r[1])||0, // Type 2
+                        b: parseInt(r[2])||0, // Type 3
+                        z: parseInt(r[3])||0  // Type 4 (Boss)
                     }));
                     generateWave();
                 }});
@@ -210,16 +243,22 @@
                 const p = state.enemyPool.filter(en => en.type === type);
                 for(let i=0; i<count; i++) if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]});
             };
-            add(1, cfg.n); add(2, cfg.e); add(3, cfg.b);
+            add(1, cfg.n); 
+            add(2, cfg.e); 
+            add(3, cfg.b); 
+            add(4, cfg.z); // ★ 新增：生成 Type 4 敵人
+            
             state.currentWave = wave;
             state.enemyWaveIdx = 0;
             spawnNext();
         }
 
         function spawnNext() {
+            // ★ 新增：每次生成前，先重置視覺效果 (移除紅背景)
+            document.body.classList.remove('boss-mode');
+
             if(state.enemyWaveIdx < state.currentWave.length) {
                 const raw = state.currentWave[state.enemyWaveIdx];
-                // 擴充敵人屬性
                 state.currentEnemy = { 
                     ...raw, curHP: raw.hp, actionStep: 0, 
                     poison: 0, vulnerable: 0, weak: 0, stunned: false 
@@ -227,7 +266,15 @@
                 state.enemyWaveIdx++;
                 
                 const box = document.getElementById('enemy-target');
+                // class 會自動變為 tier-4，觸發紫色邊框
                 box.className = 'enemy-box tier-' + state.currentEnemy.type;
+                
+                // ★ 新增：檢測是否為 Type 4 BOSS
+                if (state.currentEnemy.type === 4) {
+                    document.body.classList.add('boss-mode'); // 觸發紅背景與跑馬燈
+                    showLog("⚠ BOSS WARNING ⚠");
+                }
+
                 updateUI();
             } else {
                 state.round++;
@@ -242,10 +289,7 @@
                 if(!d) continue;
                 const el = document.createElement('div');
                 el.className = 'card';
-                
-                // ★ 標籤轉換邏輯 (視覺美化)
                 let niceDesc = d.effect;
-                // 舊標籤
                 niceDesc = niceDesc.replace(/\[#dmg\s+(\d+)\]/g, '<span class="tag-badge bg-dmg">DMG $1</span>');
                 niceDesc = niceDesc.replace(/\[#def\s+(\d+)\]/g, '<span class="tag-badge bg-def">DEF $1</span>');
                 niceDesc = niceDesc.replace(/\[#heal\s+(\d+)\]/g, '<span class="tag-badge bg-heal">HEAL $1</span>');
@@ -253,7 +297,6 @@
                 niceDesc = niceDesc.replace(/\[#eng\s+(\d+)\]/g, '<span class="tag-badge bg-eng">ENG +$1</span>');
                 niceDesc = niceDesc.replace(/\[#draw\s+(\d+)\]/g, '<span class="tag-badge bg-draw">DRAW $1</span>');
                 niceDesc = niceDesc.replace(/\[#sdmg\s+(\d+)\]/g, '<span class="tag-badge bg-sdmg">HURT $1</span>');
-                // 新標籤 (7個)
                 niceDesc = niceDesc.replace(/\[#str\s+(\d+)\]/g, '<span class="tag-badge bg-str">STR +$1</span>');
                 niceDesc = niceDesc.replace(/\[#weak\s+(\d+)\]/g, '<span class="tag-badge bg-weak">WEAK $1</span>');
                 niceDesc = niceDesc.replace(/\[#vuln\s+(\d+)\]/g, '<span class="tag-badge bg-vuln">VULN $1</span>');
@@ -262,19 +305,10 @@
                 niceDesc = niceDesc.replace(/\[#pure\s+(\d+)\]/g, '<span class="tag-badge bg-pure">PURE $1</span>');
                 niceDesc = niceDesc.replace(/\[#maxhp\s+(\d+)\]/g, '<span class="tag-badge bg-maxhp">MAXHP +$1</span>');
 
-                el.innerHTML = `
-                    <div class="card-cost">${d.cost}</div>
-                    <div class="card-name">${d.name}</div>
-                    <div class="card-desc">${niceDesc}</div>
-                `;
-                
+                el.innerHTML = `<div class="card-cost">${d.cost}</div><div class="card-name">${d.name}</div><div class="card-desc">${niceDesc}</div>`;
                 const rot = (Math.random() * 6 - 3).toFixed(1);
                 el.style.transform = `rotate(${rot}deg)`;
-                
-                el.onclick = (e) => { 
-                    e.stopPropagation(); 
-                    if(state.energy >= d.cost) select(el, d); 
-                };
+                el.onclick = (e) => { e.stopPropagation(); if(state.energy >= d.cost) select(el, d); };
                 area.appendChild(el);
             }
         }
@@ -284,11 +318,8 @@
             cancel();
             state.selectedCard = {el, d};
             el.classList.add('selected');
-            
-            // 智能高亮目標
             const hasOffense = /\[#(dmg|psn|weak|vuln|stun|drain|pure)/.test(d.effect);
             if(hasOffense) document.getElementById('enemy-target').classList.add('target-active');
-            
             const hasSelf = /\[#(heal|def|eng|draw|sdmg|str|maxhp)/.test(d.effect);
             if(hasSelf) document.getElementById('player-hub').classList.add('target-active');
         }
@@ -304,144 +335,56 @@
 
         function applyCardEffect(target) {
             const d = state.selectedCard.d;
-            
             state.energy -= d.cost;
-            const reg = /\[#(\w+)\s*(-?\d+)?\]/g; // 允許無數字的標籤
+            const reg = /\[#(\w+)\s*(-?\d+)?\]/g;
             let m;
             while((m = reg.exec(d.effect)) !== null) {
-                const tag = m[1];
-                const val = parseInt(m[2]) || 1; // 預設值為 1 (例如 stun)
-                
-                // --- 標籤邏輯 ---
-                
-                // 1. 攻擊類
+                const tag = m[1], val = parseInt(m[2]) || 1;
                 if(tag === 'dmg' && target === 'enemy') damageEnemy(val);
-                if(tag === 'pure' && target === 'enemy') {
-                    // 真實傷害：不吃易傷加成，也不吃力量(視設計而定，這裡設為也不吃力量，純粹固定值)
-                    state.currentEnemy.curHP -= val;
-                    showLog(`PURE DMG: ${val}`);
-                    visualFlash('enemy-target', 'pure');
-                }
-                if(tag === 'drain' && target === 'enemy') {
-                    const actualDmg = damageEnemy(val); // 回傳實際造成的傷害
-                    healPlayer(actualDmg);
-                }
-
-                // 2. 狀態異常類 (Debuffs)
-                if(tag === 'psn' && target === 'enemy') {
-                    state.currentEnemy.poison += val;
-                    showLog(`POISON: ${val}`);
-                }
-                if(tag === 'weak' && target === 'enemy') {
-                    state.currentEnemy.weak += val;
-                    showLog(`WEAK: ${val} Turns`);
-                }
-                if(tag === 'vuln' && target === 'enemy') {
-                    state.currentEnemy.vulnerable += val;
-                    showLog(`VULNERABLE: ${val} Turns`);
-                }
-                if(tag === 'stun' && target === 'enemy') {
-                    state.currentEnemy.stunned = true;
-                    showLog(`STUNNED!`);
-                }
-
-                // 3. 增益與防禦類 (Buffs)
-                if(tag === 'def') {
-                    state.playerShield += val;
-                    showLog(`SHIELD: ${val}`);
-                }
-                if(tag === 'str') {
-                    state.playerStr += val;
-                    showLog(`STRENGTH UP: ${val}`);
-                }
+                if(tag === 'pure' && target === 'enemy') { state.currentEnemy.curHP -= val; showLog(`PURE DMG: ${val}`); visualFlash('enemy-target', 'pure'); }
+                if(tag === 'drain' && target === 'enemy') { const actualDmg = damageEnemy(val); healPlayer(actualDmg); }
+                if(tag === 'psn' && target === 'enemy') { state.currentEnemy.poison += val; showLog(`POISON: ${val}`); }
+                if(tag === 'weak' && target === 'enemy') { state.currentEnemy.weak += val; showLog(`WEAK: ${val} Turns`); }
+                if(tag === 'vuln' && target === 'enemy') { state.currentEnemy.vulnerable += val; showLog(`VULNERABLE: ${val} Turns`); }
+                if(tag === 'stun' && target === 'enemy') { state.currentEnemy.stunned = true; showLog(`STUNNED!`); }
+                if(tag === 'def') { state.playerShield += val; showLog(`SHIELD: ${val}`); }
+                if(tag === 'str') { state.playerStr += val; showLog(`STRENGTH UP: ${val}`); }
                 if(tag === 'heal') healPlayer(val);
-                if(tag === 'maxhp') {
-                    state.playerMaxHP += val;
-                    state.playerHP += val;
-                    showLog(`MAX HP UP: ${val}`);
-                }
-                
-                // 4. 資源類
-                if(tag === 'eng') {
-                    state.energy = Math.min(10, state.energy + val);
-                    showLog(`ENERGY +${val}`);
-                }
-                if(tag === 'draw') {
-                    draw(val);
-                    showLog(`DRAW ${val}`);
-                }
-                if(tag === 'sdmg') {
-                    state.playerHP -= val;
-                    showLog(`SACRIFICE: ${val}`);
-                }
+                if(tag === 'maxhp') { state.playerMaxHP += val; state.playerHP += val; showLog(`MAX HP UP: ${val}`); }
+                if(tag === 'eng') { state.energy = Math.min(10, state.energy + val); showLog(`ENERGY +${val}`); }
+                if(tag === 'draw') { draw(val); showLog(`DRAW ${val}`); }
+                if(tag === 'sdmg') { state.playerHP -= val; showLog(`SACRIFICE: ${val}`); }
             }
-
             state.selectedCard.el.remove();
             cancel();
             checkWin();
             updateUI();
         }
 
-        // --- 戰鬥計算核心 ---
-
         function damageEnemy(baseDmg) {
-            // 傷害公式: (基礎 + 力量) * (易傷加成 1.5倍)
             let dmg = baseDmg + state.playerStr;
-            if(state.currentEnemy.vulnerable > 0) {
-                dmg = Math.floor(dmg * 1.5);
-            }
+            if(state.currentEnemy.vulnerable > 0) dmg = Math.floor(dmg * 1.5);
             state.currentEnemy.curHP -= dmg;
             showLog(`HIT: ${dmg}`);
             visualFlash('enemy-target', 'dmg');
             return dmg;
         }
-
-        function healPlayer(amt) {
-            state.playerHP = Math.min(state.playerMaxHP, state.playerHP + amt);
-            showLog(`HEAL: ${amt}`);
-        }
-
-        function checkWin() {
-            if(state.currentEnemy && state.currentEnemy.curHP <= 0) spawnNext();
-        }
-
+        function healPlayer(amt) { state.playerHP = Math.min(state.playerMaxHP, state.playerHP + amt); showLog(`HEAL: ${amt}`); }
+        function checkWin() { if(state.currentEnemy && state.currentEnemy.curHP <= 0) spawnNext(); }
         function playerTakeDamage(amt) {
-            // 敵人攻擊公式: 基礎 * (虛弱減免 0.75倍)
             let incoming = amt;
-            if(state.currentEnemy.weak > 0) {
-                incoming = Math.floor(incoming * 0.75);
-            }
-
-            // 護盾抵擋
+            if(state.currentEnemy.weak > 0) incoming = Math.floor(incoming * 0.75);
             let remain = incoming;
             if(state.playerShield > 0) {
-                if(state.playerShield >= remain) {
-                    state.playerShield -= remain;
-                    remain = 0;
-                    showLog(`BLOCKED!`);
-                } else {
-                    remain -= state.playerShield;
-                    state.playerShield = 0;
-                }
+                if(state.playerShield >= remain) { state.playerShield -= remain; remain = 0; showLog(`BLOCKED!`); }
+                else { remain -= state.playerShield; state.playerShield = 0; }
             }
-
-            if(remain > 0) {
-                state.playerHP -= remain;
-                showLog(`TOOK ${remain} DMG`);
-                visualFlash('player-hub', 'dmg');
-            }
+            if(remain > 0) { state.playerHP -= remain; showLog(`TOOK ${remain} DMG`); visualFlash('player-hub', 'dmg'); }
             updateUI();
         }
 
-        // --- 回合流程 ---
-        
         document.getElementById('end-btn').onclick = () => {
             if(!state.currentEnemy) return;
-
-            // 1. 玩家回合結束結算
-            // (目前無)
-
-            // 2. 敵人狀態結算 (DoT)
             if(state.currentEnemy.poison > 0) {
                 const pDmg = state.currentEnemy.poison;
                 state.currentEnemy.curHP -= pDmg;
@@ -449,20 +392,10 @@
                 showLog(`POISON DMG: ${pDmg}`);
                 if(state.currentEnemy.curHP <= 0) { spawnNext(); startPlayerTurn(); return; }
             }
-
-            // 3. 敵人行動
-            if(state.currentEnemy.stunned) {
-                showLog("ENEMY STUNNED!");
-                state.currentEnemy.stunned = false; // 解除暈眩
-            } else {
-                enemyAction();
-            }
-
-            // 4. 敵人Buff/Debuff 遞減
+            if(state.currentEnemy.stunned) { showLog("ENEMY STUNNED!"); state.currentEnemy.stunned = false; }
+            else { enemyAction(); }
             if(state.currentEnemy.vulnerable > 0) state.currentEnemy.vulnerable--;
             if(state.currentEnemy.weak > 0) state.currentEnemy.weak--;
-
-            // 5. 準備玩家新回合
             startPlayerTurn();
         };
 
@@ -470,35 +403,23 @@
             const acts = state.currentEnemy.actions;
             if(!acts.length) return;
             const currentAct = acts[state.currentEnemy.actionStep % acts.length];
-            
-            // 解析敵人動作
             const reg = /\[#(\w+)\s*(-?\d+)?\]/g; 
             let m;
             while((m = reg.exec(currentAct)) !== null) {
                 const tag = m[1], val = parseInt(m[2])||0;
                 if(tag === 'dmg') playerTakeDamage(val);
-                // 敵人若有 heal/str 等可在此擴充
             }
             state.currentEnemy.actionStep++;
         }
 
-        function startPlayerTurn() {
-            state.playerShield = 0; // 回合開始護盾歸零
-            state.energy = state.maxEnergy;
-            draw(5);
-            updateUI();
-        }
+        function startPlayerTurn() { state.playerShield = 0; state.energy = state.maxEnergy; draw(5); updateUI(); }
 
-        // --- 視覺輔助 ---
         function showLog(msg) {
             const log = document.getElementById('action-log');
             log.innerText = msg;
-            log.style.opacity = 1;
-            log.style.transform = "translateY(-20px)";
-            log.style.transition = "0s";
+            log.style.opacity = 1; log.style.transform = "translateY(-20px)"; log.style.transition = "0s";
             setTimeout(()=>{ log.style.transition = "1s"; log.style.opacity = 0; log.style.transform = "translateY(0)"; }, 800);
         }
-
         function visualFlash(id, type) {
             const el = document.getElementById(id);
             if(type === 'dmg') el.style.filter = "brightness(2) sepia(1) hue-rotate(-50deg) saturate(5)";
@@ -507,62 +428,34 @@
         }
 
         function updateUI() {
-            // Enemy UI
             if(state.currentEnemy) {
                 document.getElementById('ui-en-name').innerText = state.currentEnemy.name;
                 document.getElementById('ui-en-row').innerText = `Row: ${state.currentEnemy.row}`;
-                
                 const enPct = (state.currentEnemy.curHP / state.currentEnemy.hp) * 100;
                 document.getElementById('ui-en-hp-fill').style.width = Math.max(0, enPct) + '%';
                 document.getElementById('ui-en-hp-text').innerText = `${state.currentEnemy.curHP} / ${state.currentEnemy.hp}`;
-                
-                // 敵人狀態列
-                const sBar = document.getElementById('en-status');
-                sBar.innerHTML = '';
+                const sBar = document.getElementById('en-status'); sBar.innerHTML = '';
                 const addIcon = (txt, cls) => sBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
-                
                 if(state.currentEnemy.poison > 0) addIcon(`☠ ${state.currentEnemy.poison}`, 'st-poison');
                 if(state.currentEnemy.vulnerable > 0) addIcon(`💔 ${state.currentEnemy.vulnerable}`, 'st-vuln');
                 if(state.currentEnemy.weak > 0) addIcon(`📉 ${state.currentEnemy.weak}`, 'st-weak');
                 if(state.currentEnemy.stunned) addIcon(`⚡ STUN`, 'st-stun');
-
-                // 意圖
                 const acts = state.currentEnemy.actions;
-                if(acts.length) {
-                    const nextAct = acts[state.currentEnemy.actionStep % acts.length];
-                    document.getElementById('ui-en-intent').innerText = `INTENT: ${nextAct}`;
-                }
+                if(acts.length) { document.getElementById('ui-en-intent').innerText = `INTENT: ${acts[state.currentEnemy.actionStep % acts.length]}`; }
             }
-
             document.getElementById('ui-round').innerText = state.round;
             document.getElementById('ui-energy').innerText = `${state.energy}/${state.maxEnergy}`;
             document.getElementById('ui-wave-left').innerText = Math.max(0, state.currentWave.length - state.enemyWaveIdx);
-            
-            // Player UI
             document.getElementById('ui-pl-hp-text').innerText = `${state.playerHP} / ${state.playerMaxHP}`;
             document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, (state.playerHP/state.playerMaxHP)*100) + '%';
-            
-            // 護盾顯示
             const sFill = document.getElementById('ui-pl-shield-fill');
-            if(state.playerShield > 0) {
-                sFill.style.width = Math.min(100, (state.playerShield/state.playerMaxHP)*100) + '%';
-            } else {
-                sFill.style.width = '0%';
-            }
-
-            // 玩家狀態列
-            const pBar = document.getElementById('pl-status');
-            pBar.innerHTML = '';
+            sFill.style.width = state.playerShield > 0 ? Math.min(100, (state.playerShield/state.playerMaxHP)*100) + '%' : '0%';
+            const pBar = document.getElementById('pl-status'); pBar.innerHTML = '';
             const addPIcon = (txt, cls) => pBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
-            
             if(state.playerShield > 0) addPIcon(`🛡 ${state.playerShield}`, 'st-shield');
             if(state.playerStr > 0) addPIcon(`💪 ${state.playerStr}`, 'st-str');
-
-            if(state.playerHP <= 0) {
-                setTimeout(() => { alert("SYSTEM FAILURE. RELOAD."); location.reload(); }, 100);
-            }
+            if(state.playerHP <= 0) { setTimeout(() => { alert("SYSTEM FAILURE. RELOAD."); location.reload(); }, 100); }
         }
-
         document.body.onclick = cancel;
         window.onload = init;
     </script></body></html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v9.2 - Rewards</title>
+    <title>Steampunk Duelist v9.4 - Layout Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -37,59 +37,54 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye', cursive; font-size: 1.3rem; line-height: 35px; padding-right: 50px; text-shadow: 2px 2px 4px #000; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* --- 過場畫面與獎勵 UI (大幅更新) --- */
-        #victory-screen {
+        /* --- 遮罩層 --- */
+        .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.98); z-index: 10000;
+            background: rgba(0,0,0,0.95); z-index: 10000;
             display: none; flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(5px);
         }
-        .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; }
+        
+        #pile-viewer-content {
+            display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
+            max-width: 90%; max-height: 80vh; overflow-y: auto; padding: 20px;
+        }
+        .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; }
+        .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
+
+        /* 過場畫面 */
+        .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
         .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
-        
-        /* 獎勵按鈕容器 */
         #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
-        
         .reward-btn {
-            width: 220px; height: 280px;
-            background: #222; border: 4px double var(--bronze); border-radius: 10px;
+            width: 220px; height: 280px; background: #222; border: 4px double var(--bronze); border-radius: 10px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; transition: 0.3s; padding: 15px; text-align: center;
-            color: var(--parchment); position: relative; overflow: hidden;
+            cursor: pointer; transition: 0.3s; padding: 15px; text-align: center; color: var(--parchment);
         }
         .reward-btn:hover { transform: translateY(-10px); border-color: var(--steam-blue); box-shadow: 0 0 20px var(--steam-blue); background: #2a2a2a; }
         .reward-icon { font-size: 4rem; margin-bottom: 20px; }
         .reward-name { font-family: 'Rye'; font-size: 1.5rem; margin-bottom: 10px; color: var(--gold); }
         .reward-desc { font-size: 0.9rem; color: #aaa; }
-
-        /* 警告文字 */
         .warning-text { color: var(--danger); font-size: 0.9rem; margin-top: 20px; border: 1px solid var(--danger); padding: 5px 15px; border-radius: 5px; background: rgba(255, 0, 0, 0.1); }
-
-        /* 卡牌選擇區域 (隱藏層) */
-        #card-selection-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); display: none;
-            flex-direction: column; align-items: center; justify-content: center; z-index: 10001;
-        }
-        #selection-grid { 
-            display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; 
-            max-width: 90%; max-height: 70vh; overflow-y: auto; padding: 20px;
-        }
-        .selection-title { font-family: 'Rye'; font-size: 2rem; color: #fff; margin-bottom: 20px; }
-
-        /* 下一關按鈕 */
         #next-lvl-btn {
-            padding: 15px 50px; font-size: 2rem; font-family: 'Rye';
-            background: var(--steam-blue); color: #000; border: 5px solid #fff;
-            border-radius: 10px; cursor: pointer; box-shadow: 0 0 30px var(--steam-blue);
+            padding: 15px 50px; font-size: 2rem; font-family: 'Rye'; background: var(--steam-blue); color: #000; 
+            border: 5px solid #fff; border-radius: 10px; cursor: pointer; box-shadow: 0 0 30px var(--steam-blue);
             animation: pulse-btn 1s infinite alternate; display: none; margin-top: 30px;
         }
         @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
 
-        /* --- 戰鬥與 UI --- */
-        #battle-stage { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 40px; transition: 0.3s; z-index: 5; }
+        /* --- 戰鬥佈局 (位置調整) --- */
+        /* ★ 修改：top 從 60px 改為 100px，避開跑馬燈 */
+        #battle-stage { 
+            position: absolute; top: 100px; left: 50%; transform: translateX(-50%); 
+            display: flex; align-items: center; gap: 30px; transition: 0.3s; z-index: 5; 
+        }
         .round-gauge { width: 80px; height: 100px; background: var(--leather); border: 3px double var(--brass); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .enemy-box { width: 420px; background: #222; border: 6px ridge var(--bronze); padding: 25px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; }
+        
+        .enemy-box { 
+            width: 360px; background: #222; border: 6px ridge var(--bronze); 
+            padding: 20px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; 
+        }
         .enemy-box.stunned { filter: grayscale(100%) brightness(0.7); border-color: #555 !important; }
         .tier-1 { border-color: #cd7f32 !important; } .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); } .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
         .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple); animation: boss-pulse 1.5s infinite alternate ease-in-out; }
@@ -102,52 +97,78 @@
         .st-poison { background: var(--poison); } .st-shield { background: var(--shield); } .st-str { background: var(--str); } .st-vuln { background: var(--vuln); } .st-weak { background: var(--weak); color: #000; } .st-stun { background: #555; border: 1px dashed #fff; }
         .marker-lockon { background: #ff0055; border-color: #ffaaaa; } .marker-stance { background: #00aaff; border-color: #aaffff; }
 
-        #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; transition: 0.3s; z-index: 10; }
-        .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
-        #pile-display { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 15px; z-index: 50; }
-        .pile-box { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; }
-        .pile-label { font-size: 0.6rem; color: #888; margin-bottom: 5px; } .pile-count { font-family: 'Rye'; font-size: 1.5rem; color: #fff; }
-
-        #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; pointer-events: none; transition: 0.3s; z-index: 20; }
-        .card { width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -15px; cursor: pointer; position: relative; transition: 0.25s; background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png'); pointer-events: auto; box-shadow: -5px 5px 15px rgba(0,0,0,0.5); flex-shrink: 0; }
-        .card:hover { transform: translateY(-40px) rotate(0deg) !important; z-index: 100; margin: 0 5px; }
-        .card.selected { transform: translateY(-80px) scale(1.1) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
-        .card-cost { position: absolute; top: -15px; left: -15px; width: 40px; height: 40px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.4rem; z-index: 2; }
-        .card-name { padding:15px 5px; text-align:center; font-family:'Rye'; font-size:1.0rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
-        .card-desc { margin-top: 20px; text-align: center; font-size: 0.85rem; color: #421; padding: 0 10px; line-height: 1.3; font-weight: bold;}
-        .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.75rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
-        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; } .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; } .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; } .bg-once { background: #333; color: #aaa; border: 1px solid #aaa; }
-
-        .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; position: relative; }
+        .hp-container { 
+            width: 100%; height: 22px; background: #000; border-radius: 11px; 
+            border: 2px solid var(--brass); overflow: hidden; 
+            margin: 20px 0 5px 0; 
+            position: relative; 
+        }
         .hp-fill { height: 100%; width: 100%; transition: 0.4s; position: absolute; left: 0; top: 0; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2;}
+
+        #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; transition: 0.3s; z-index: 10; }
+        .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
         #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; z-index: 10; }
         #action-log { position: absolute; top: 120px; width: 100%; text-align: center; color: #fff; font-family: 'Rye'; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 500; font-size: 1.5rem; transition: 0.3s; }
         #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; z-index: 50; }
         #end-btn:hover { background: #b87333; transform: translateY(-50%) scale(1.05); }
-        #hand-counter { position: absolute; bottom: 20px; right: 20px; font-family: 'Rye', serif; font-size: 2rem; color: var(--parchment); text-shadow: 2px 2px 0 #000; z-index: 100; pointer-events: none; }
+
+        /* 牌堆顯示 (下移到 10px) */
+        #pile-display { position: absolute; bottom: 10px; left: 20px; display: flex; gap: 15px; z-index: 50; }
+        .pile-box { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; cursor: pointer; transition: 0.2s; }
+        .pile-box:hover { background: #333; border-color: #fff; }
+        .pile-label { font-size: 0.6rem; color: #888; margin-bottom: 5px; } .pile-count { font-family: 'Rye'; font-size: 1.5rem; color: #fff; }
+        #hand-counter { position: absolute; bottom: 10px; right: 20px; font-family: 'Rye', serif; font-size: 2rem; color: var(--parchment); text-shadow: 2px 2px 0 #000; z-index: 100; pointer-events: none; }
+
+        /* --- 卡牌區域 (下移) --- */
+        /* ★ 修改：bottom 從 20px 改為 0px */
+        #hand-area { 
+            position: absolute; bottom: 0px; left: 50%; transform: translateX(-50%); 
+            width: 90%; height: 220px; display: flex; justify-content: center; align-items: flex-end; 
+            perspective: 1000px; pointer-events: none; transition: 0.3s; z-index: 20; 
+        }
+        
+        .card { 
+            width: 130px; height: 190px; background: var(--parchment); color: #2a1a0a; 
+            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -12px; 
+            cursor: pointer; position: relative; transition: 0.25s; 
+            background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
+            pointer-events: auto; box-shadow: -5px 5px 15px rgba(0,0,0,0.5); flex-shrink: 0; 
+        }
+        .card:hover { transform: translateY(-40px) rotate(0deg) !important; z-index: 100; margin: 0 5px; }
+        .card.selected { transform: translateY(-80px) scale(1.1) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
+        .card-cost { position: absolute; top: -12px; left: -12px; width: 32px; height: 32px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem; z-index: 2; }
+        .card-name { padding:10px 2px; text-align:center; font-family:'Rye'; font-size:0.9rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
+        .card-desc { margin-top: 15px; text-align: center; font-size: 0.75rem; color: #421; padding: 0 8px; line-height: 1.3; font-weight: bold;}
+        .card-row-id { position: absolute; bottom: 4px; left: 6px; font-size: 0.6rem; color: #888; font-family: sans-serif; opacity: 0.7; }
+
+        .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.7rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
+        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; } .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; } .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; } .bg-once { background: #333; color: #aaa; border: 1px solid #aaa; }
 
         /* 平板修正 */
         @media (min-width: 769px) and (max-width: 1366px) {
-            #battle-stage { top: 45px; transform: translateX(-50%) scale(0.9); }
+            #battle-stage { top: 90px; transform: translateX(-50%) scale(0.9); }
             #player-hub { bottom: 240px; width: 400px; }
             #side-panel { left: 10px; transform: translateY(-50%) scale(0.85); transform-origin: left center; }
             #end-btn { width: 90px; height: 90px; right: 20px; font-size: 0.9rem; }
             .victory-title { font-size: 3rem; }
         }
 
+        /* 手機修正 */
         @media (max-width: 768px) {
             body { background-position: center; background-size: cover; }
             .marquee-content span { font-size: 1rem; line-height: 35px; }
-            #battle-stage { top: 55px; width: 100%; flex-direction: column; gap: 5px; }
+            
+            /* ★ 修改：手機版 top 改為 85px */
+            #battle-stage { top: 85px; width: 100%; flex-direction: column; gap: 5px; }
+            
             .round-gauge { width: 50px; height: 60px; position: absolute; top: 0; right: 10px; z-index: 10; border-width: 2px; }
             .round-gauge span:first-child { font-size: 0.5rem; } .round-gauge span:last-child { font-size: 1.2rem !important; }
             .enemy-box { width: 85%; padding: 10px 15px; margin-top: 15px; } #ui-en-name { font-size: 1.3rem !important; }
             #side-panel { top: 50px; left: 10px; flex-direction: row; gap: 10px; scale: 0.7; transform-origin: top left; z-index: 20; }
             #player-hub { width: 90%; bottom: 250px; padding: 5px; }
-            #hand-area { height: 190px; bottom: 0; width: 100%; perspective: 500px; overflow-x: auto; justify-content: center; align-items: flex-end; padding-bottom: 5px; }
+            #hand-area { height: 180px; bottom: 0; width: 100%; perspective: 500px; overflow-x: auto; justify-content: center; align-items: flex-end; padding-bottom: 5px; }
             .card { width: 100px; height: 150px; margin: 0 -18px; }
             .card-name { font-size: 0.7rem; padding: 8px 2px; } .card-desc { font-size: 0.6rem; margin-top: 8px; }
             .card-cost { width: 25px; height: 25px; font-size: 0.9rem; top: -8px; left: -8px; } .card.selected { transform: translateY(-50px) scale(1.1) !important; }
@@ -158,43 +179,41 @@
             .victory-title { font-size: 2.5rem; }
             #reward-options { flex-direction: column; gap: 10px; }
             .reward-btn { width: 100%; height: 80px; flex-direction: row; padding: 10px; gap: 20px; justify-content: flex-start; }
-            .reward-icon { font-size: 2rem; margin: 0; }
-            .reward-name { font-size: 1.2rem; margin: 0; } .reward-desc { display: none; }
+            .reward-icon { font-size: 2rem; margin: 0; } .reward-name { font-size: 1.2rem; margin: 0; } .reward-desc { display: none; }
         }
     </style>
 </head>
 <body onload="init()">
     <div id="marquee-container"><div class="marquee-content"><span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div></div>
     
-    <div id="victory-screen">
+    <div id="victory-screen" class="overlay-screen">
         <div class="victory-title">WAVE COMPLETE</div>
         <div class="victory-subtitle">CHOOSE YOUR REWARD</div>
-        
         <div id="reward-options">
             <div class="reward-btn" onclick="showRemoveCardUI()">
                 <div class="reward-icon">🔥</div>
                 <div class="reward-name">PURGE</div>
-                <div class="reward-desc">Remove 1 card from your deck permanently.</div>
+                <div class="reward-desc">Remove 1 card from your deck.</div>
             </div>
             <div class="reward-btn" onclick="showAddCardUI()">
                 <div class="reward-icon">🃏</div>
                 <div class="reward-name">DRAFT</div>
-                <div class="reward-desc">Choose 1 of 3 new cards to add to your deck.</div>
+                <div class="reward-desc">Add 1 of 3 new cards.</div>
             </div>
             <div class="reward-btn" onclick="chooseHeal()">
                 <div class="reward-icon">❤</div>
                 <div class="reward-name">REST</div>
-                <div class="reward-desc">Recover 15% of your Max HP immediately.</div>
+                <div class="reward-desc">Recover 15% Max HP.</div>
             </div>
         </div>
-
         <div class="warning-text">⚠ SELECTION CANNOT BE CANCELLED. CHOOSE CAREFULLY. ⚠</div>
         <button id="next-lvl-btn" onclick="goToNextLevel()">NEXT BATTLE ➡</button>
     </div>
 
-    <div id="card-selection-overlay">
-        <div class="selection-title" id="selection-title-text">SELECT A CARD</div>
-        <div id="selection-grid"></div>
+    <div id="card-selection-overlay" class="overlay-screen" onclick="closePileViewer(event)">
+        <div class="viewer-title" id="selection-title-text">SELECT A CARD</div>
+        <div id="pile-viewer-content"></div>
+        <div class="close-tip">(Click background to close view)</div>
     </div>
 
     <div id="action-log"></div>
@@ -220,8 +239,14 @@
     </div>
     
     <div id="pile-display">
-        <div class="pile-box"><span class="pile-label">DRAW</span><span id="ui-draw-count" class="pile-count">--</span></div>
-        <div class="pile-box"><span class="pile-label">DISC</span><span id="ui-disc-count" class="pile-count">--</span></div>
+        <div class="pile-box" onclick="showPile('DRAW PILE', state.drawPile)">
+            <span class="pile-label">DRAW</span>
+            <span id="ui-draw-count" class="pile-count">--</span>
+        </div>
+        <div class="pile-box" onclick="showPile('DISCARD PILE', state.discardPile)">
+            <span class="pile-label">DISC</span>
+            <span id="ui-disc-count" class="pile-count">--</span>
+        </div>
     </div>
     <div id="hand-counter">0/5</div>
     
@@ -237,21 +262,20 @@
             playerMarkers: [],
             energy: 3, maxEnergy: 3, maxHandSize: 5,
             round: 1,
-            masterLibrary: [], // 所有卡牌資料
-            deck: [],          // 玩家的永久牌組
+            masterLibrary: [],
+            deck: [],
             drawPile: [], discardPile: [], currentHand: [],
             enemyPool: [], waveConfig: [],
-            currentWave: [], currentEnemy: null, enemyWaveIdx: 0, selectedCard: null
+            currentWave: [], currentEnemy: null, enemyWaveIdx: 0, selectedCard: null,
+            isRewardMode: false 
         };
 
         async function init() {
             Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (res) => {
                 state.masterLibrary = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], effect: r[1], cost: parseInt(r[2])||0, row: i+2 }));
-                // 初始牌組：隨機 20 張 (或是您可以定義初始牌組)
                 state.deck = [];
-                for(let i=0; i<20; i++) {
-                    if(state.masterLibrary.length > 0) state.deck.push({...state.masterLibrary[Math.floor(Math.random() * state.masterLibrary.length)]});
-                }
+                const starters = state.masterLibrary.slice(0, 5); 
+                starters.forEach(c => { state.deck.push({...c}); state.deck.push({...c}); });
                 startBattle();
             }});
             Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (res) => {
@@ -263,13 +287,9 @@
             }});
         }
 
-        // 開始新戰鬥：重置抽牌堆
         function startBattle() {
-            state.drawPile = [...state.deck]; // 複製牌組到抽牌堆
-            state.discardPile = [];
-            state.currentHand = [];
-            shuffle(state.drawPile);
-            draw(5);
+            state.drawPile = [...state.deck]; state.discardPile = []; state.currentHand = [];
+            shuffle(state.drawPile); draw(5);
         }
 
         function shuffle(array) {
@@ -279,53 +299,80 @@
             }
         }
 
-        // --- 獎勵選擇邏輯 ---
+        function showPile(title, pileArray) {
+            if(state.isRewardMode) return;
+            const overlay = document.getElementById('card-selection-overlay');
+            const content = document.getElementById('pile-viewer-content');
+            document.getElementById('selection-title-text').innerText = title;
+            document.querySelector('.close-tip').style.display = 'block'; 
+            content.innerHTML = '';
+            const sortedCards = [...pileArray].sort((a, b) => a.row - b.row);
+            sortedCards.forEach(card => {
+                const el = createCardElement(card);
+                el.style.pointerEvents = 'none'; el.style.transform = 'scale(0.8)'; el.style.position = 'relative'; el.style.margin = '0';
+                content.appendChild(el);
+            });
+            overlay.style.display = 'flex';
+        }
+
+        function closePileViewer(e) {
+            if (e.target.id === 'card-selection-overlay' && !state.isRewardMode) {
+                document.getElementById('card-selection-overlay').style.display = 'none';
+            }
+        }
+
         function chooseHeal() {
             const healAmt = Math.floor(state.playerMaxHP * 0.15);
             state.playerHP = Math.min(state.playerMaxHP, state.playerHP + healAmt);
-            alert(`Recovered ${healAmt} HP!`);
-            onRewardChosen();
+            alert(`Recovered ${healAmt} HP!`); onRewardChosen();
         }
 
         function showRemoveCardUI() {
+            state.isRewardMode = true; 
             const overlay = document.getElementById('card-selection-overlay');
-            const grid = document.getElementById('selection-grid');
+            const content = document.getElementById('pile-viewer-content');
             document.getElementById('selection-title-text').innerText = "REMOVE A CARD";
-            grid.innerHTML = '';
+            document.querySelector('.close-tip').style.display = 'none'; 
+            content.innerHTML = '';
             overlay.style.display = 'flex';
-
             state.deck.forEach((card, index) => {
                 const el = createCardElement(card);
-                el.onclick = () => {
+                el.style.position = 'relative'; el.style.margin = '0'; el.style.transform = 'scale(0.9)';
+                el.onclick = (e) => {
+                    e.stopPropagation();
                     if(confirm(`Remove ${card.name}?`)) {
                         state.deck.splice(index, 1);
                         overlay.style.display = 'none';
+                        state.isRewardMode = false;
                         onRewardChosen();
                     }
                 };
-                grid.appendChild(el);
+                content.appendChild(el);
             });
         }
 
         function showAddCardUI() {
+            state.isRewardMode = true;
             const overlay = document.getElementById('card-selection-overlay');
-            const grid = document.getElementById('selection-grid');
+            const content = document.getElementById('pile-viewer-content');
             document.getElementById('selection-title-text').innerText = "CHOOSE A NEW CARD";
-            grid.innerHTML = '';
+            document.querySelector('.close-tip').style.display = 'none';
+            content.innerHTML = '';
             overlay.style.display = 'flex';
-
-            // 隨機選 3 張新卡
             for(let i=0; i<3; i++) {
                 const card = state.masterLibrary[Math.floor(Math.random() * state.masterLibrary.length)];
                 const el = createCardElement(card);
-                el.onclick = () => {
+                el.style.position = 'relative'; el.style.margin = '0'; el.style.transform = 'scale(0.9)';
+                el.onclick = (e) => {
+                    e.stopPropagation();
                     if(confirm(`Add ${card.name} to deck?`)) {
                         state.deck.push({...card});
                         overlay.style.display = 'none';
+                        state.isRewardMode = false;
                         onRewardChosen();
                     }
                 };
-                grid.appendChild(el);
+                content.appendChild(el);
             }
         }
 
@@ -333,7 +380,7 @@
             const el = document.createElement('div');
             el.className = 'card';
             let niceDesc = formatCardText(d.effect);
-            el.innerHTML = `<div class="card-cost">${d.cost}</div><div class="card-name">${d.name}</div><div class="card-desc">${niceDesc}</div>`;
+            el.innerHTML = `<div class="card-cost">${d.cost}</div><div class="card-name">${d.name}</div><div class="card-desc">${niceDesc}</div><div class="card-row-id">#${d.row}</div>`;
             return el;
         }
 
@@ -346,18 +393,15 @@
 
         function goToNextLevel() {
             document.getElementById('victory-screen').style.display = 'none';
-            // 重置介面狀態
             document.getElementById('reward-options').style.display = 'flex';
             document.querySelector('.warning-text').style.display = 'block';
             document.querySelector('.victory-subtitle').innerText = "CHOOSE YOUR REWARD";
             document.getElementById('next-lvl-btn').style.display = 'none';
-            
             state.round++;
             generateWave();
-            startBattle(); // 重新洗牌
+            startBattle();
         }
 
-        // --- 遊戲核心邏輯 ---
         function resolveVal(valStr) {
             if (!valStr || valStr.toString().trim() === "") return 1;
             if (isNaN(valStr) && !valStr.includes('{')) return 1;
@@ -413,9 +457,7 @@
                 }
                 const d = state.drawPile.pop();
                 state.currentHand.push(d); 
-                const el = document.createElement('div');
-                el.className = 'card';
-                el.innerHTML = `<div class="card-cost">${d.cost}</div><div class="card-name">${d.name}</div><div class="card-desc">${formatCardText(d.effect)}</div>`;
+                const el = createCardElement(d);
                 const rot = (Math.random() * 6 - 3).toFixed(1);
                 el.style.transform = `rotate(${rot}deg)`;
                 el.onclick = (e) => { e.stopPropagation(); if(state.energy >= d.cost) { select(el, d); if(navigator.vibrate) navigator.vibrate(10); } else { showLog("NOT ENOUGH ENERGY"); if(navigator.vibrate) navigator.vibrate(50); }};

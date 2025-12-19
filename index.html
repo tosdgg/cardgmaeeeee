@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.7 - Separate Enemy Skills</title>
+    <title>Steampunk Duelist v10.8 - Temporary Cards</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -28,7 +28,6 @@
 
         body.boss-mode { background-image: radial-gradient(circle, #800 0%, var(--boss-red-bg) 90%) !important; }
 
-        /* 跑馬燈 */
         #marquee-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 30px;
             background: var(--danger); border-bottom: 2px solid var(--gold);
@@ -39,7 +38,6 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* 遮罩層 */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 10000;
@@ -53,7 +51,6 @@
         .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; text-shadow: 0 0 10px #000; }
         .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
 
-        /* 過場 */
         .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
         .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
         #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
@@ -74,7 +71,6 @@
         }
         @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
 
-        /* 頂部 */
         #top-bar {
             width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
             padding: 0 20px; z-index: 100; pointer-events: none; margin-top: 30px;
@@ -93,7 +89,6 @@
             border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* 戰鬥區 */
         #battle-area {
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             padding-top: 20px; gap: 15px; position: relative; width: 100%;
@@ -150,7 +145,6 @@
         .hp-fill { height: 100%; width: 100%; position: absolute; left: 0; top: 0; transition: 0.4s; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2; }
 
-        /* 操作區 */
         #action-area {
             height: 240px; width: 100%; position: relative;
             display: flex; justify-content: center; align-items: flex-end;
@@ -171,6 +165,14 @@
         }
         .card:hover { transform: translateY(-50px) scale(1.1) !important; z-index: 100; margin: 0 5px; }
         .card.selected { transform: translateY(-80px) scale(1.15) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
+        
+        /* ★ 新增：暫時卡牌樣式 (青色虛線邊框) */
+        .card.temp-card { 
+            border: 4px dashed var(--steam-blue); 
+            background: linear-gradient(to bottom, #eaddcf, #cceeff); 
+            opacity: 0.95;
+        }
+
         .card-cost { position: absolute; top: -12px; left: -12px; width: 32px; height: 32px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem; z-index: 2; }
         .card-name { padding:10px 2px; text-align:center; font-family:'Rye'; font-size:0.9rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
         .card-desc { margin-top: 15px; text-align: center; font-size: 0.75rem; color: #421; padding: 0 8px; line-height: 1.3; font-weight: bold;}
@@ -178,6 +180,8 @@
 
         .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.7rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
         .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; } .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; } .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; } .bg-once { background: #333; color: #aaa; border: 1px solid #aaa; }
+        /* 新增 Add Card Tag 顏色 */
+        .bg-add { background: #00aaaa; border: 1px solid #0ff; }
 
         #piles-ui { position: absolute; bottom: 10px; left: 20px; display: flex; gap: 15px; z-index: 50; }
         .pile-btn { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; cursor: pointer; transition: 0.2s; }
@@ -356,6 +360,18 @@
             update();
         }
 
+        // ★ 新增：產生暫時卡牌到手牌
+        function addTempCard(rowId) {
+            const target = state.lib.find(c => c.row == rowId);
+            if(target) {
+                if(state.hand.length >= state.maxHand) { log("HAND FULL"); return; }
+                const tempCard = { ...target, isTemp: true }; // 標記為暫時
+                state.hand.push(tempCard);
+                log("ADDED CARD");
+                renderHand(); update();
+            }
+        }
+
         function drawCard(n) {
             const can = state.maxHand - state.hand.length;
             let cnt = Math.min(n, can);
@@ -378,6 +394,10 @@
                 if(t==='eng') { state.eng+=val; log(`ENG +${val}`); }
                 if(t==='draw') { drawCard(val); log(`DRAW ${val}`); }
                 if(t==='hand_limit') { state.maxHand=Math.max(0,state.maxHand+val); log(`HAND MAX ${val>0?'+':''}${val}`); }
+                
+                // ★ 新增：add_card 標籤
+                if(t==='add_card') { addTempCard(parseInt(vRaw)); }
+
                 if(t==='mark') { const n=vRaw.trim(); if(state.sel.target==='en'){ state.curEn.marks.push(n); }else{ state.pMarks.push(n); } log(`MARK: ${n}`); }
                 if(t==='unmark') { const n=vRaw.trim(); const arr=state.sel.target==='en'?state.curEn.marks:state.pMarks; const i=arr.indexOf(n); if(i>-1) arr.splice(i,1); }
                 if(t==='psn') { state.curEn.psn+=val; log(`POISON ${val}`); }
@@ -391,7 +411,7 @@
                 if(t==='maxhp') { state.pMaxHP+=val; state.pHP+=val; log(`MAXHP +${val}`); }
             }
             state.hand.splice(idx, 1);
-            if(c.eff.includes('[#once]')) log("BANISHED"); else state.disc.push(c);
+            if(c.eff.includes('[#once]') || c.isTemp) log("BANISHED"); else state.disc.push(c);
             cancelSel(); checkWin(); update(); renderHand();
         }
 
@@ -408,7 +428,6 @@
             try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
         }
 
-        // 玩家攻擊敵人 (扣除敵人護盾)
         function dmgEn(v) {
             let d = v + state.pStr; 
             if(state.curEn.vuln>0) d=Math.floor(d*1.5);
@@ -433,11 +452,13 @@
         function renderHand() {
             const div = document.getElementById('hand-container'); div.innerHTML='';
             state.hand.forEach((c, i) => {
-                const el = document.createElement('div'); el.className='card';
+                const el = document.createElement('div'); 
+                // ★ 暫時卡牌樣式處理
+                el.className = c.isTemp ? 'card temp-card' : 'card';
                 el.innerHTML = `
                     <div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-row-id">#${c.row}</div></div>
                     <div class="card-name">${c.name}</div>
-                    <div class="card-body">${fmt(c.eff)}</div>
+                    <div class="card-body">${fmt(c.eff)} ${c.isTemp ? '<span class="tag-badge bg-once">TEMP</span>' : ''}</div>
                 `;
                 el.onclick = (e) => {
                     e.stopPropagation();
@@ -472,7 +493,13 @@
 
         document.getElementById('end-btn').onclick = () => {
             if(!state.curEn) return;
-            state.hand.forEach(c=>state.disc.push(c)); state.hand=[]; renderHand();
+            
+            // ★ 回合結束檢查：如果卡牌是暫時的 (isTemp)，直接移除；否則進入棄牌堆
+            state.hand.forEach(c => {
+                if(!c.isTemp) state.disc.push(c);
+            });
+            state.hand = []; 
+            renderHand();
             
             if(state.curEn.psn>0) { 
                 state.curEn.curHP-=state.curEn.psn; state.curEn.psn--; log(`ENEMY POISON ${state.curEn.psn+1}`);
@@ -488,9 +515,7 @@
             newTurn();
         };
 
-        // --- ★ 敵人傷害/行動核心 (獨立邏輯) ---
-        
-        // 敵人對玩家造成的實際傷害計算
+        // 敵人行動核心 (獨立)
         function calculateEnemyDmgToPlayer(baseVal) {
             let inc = baseVal + (state.curEn.str||0); 
             if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
@@ -508,34 +533,27 @@
         function enemyAction() {
             const acts = state.curEn.acts; if(!acts.length) return;
             const currentAct = acts[state.curEn.step % acts.length];
-            // 重置敵人護盾
             state.curEn.shd = 0; 
 
             const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
             while((m=reg.exec(currentAct))!==null) {
                 const t=m[1], vRaw=m[2], val=resolveVal(vRaw);
                 
-                // 一般攻擊
                 if(t==='dmg') {
                     const dealt = calculateEnemyDmgToPlayer(val);
                     if(dealt > 0) { state.pHP -= dealt; log(`TOOK ${dealt}`); visualFlash('player-box','dmg'); }
                 }
                 
-                // ★ 新增：敵人專用吸血 [#en_drain]
                 if(t==='en_drain') {
                     const dealt = calculateEnemyDmgToPlayer(val);
                     if(dealt > 0) {
                         state.pHP -= dealt;
                         state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP + dealt);
                         log(`DRAIN ${dealt}`);
-                        visualFlash('player-box', 'dmg');
-                        visualFlash('enemy-target', 'pure');
-                    } else {
-                        log("DRAIN BLOCKED");
-                    }
+                        visualFlash('player-box', 'dmg'); visualFlash('enemy-target', 'pure');
+                    } else { log("DRAIN BLOCKED"); }
                 }
 
-                // ★ 新增：敵人專用自殘 [#en_sdmg]
                 if(t==='en_sdmg') {
                     state.curEn.curHP -= val;
                     log(`EN SACRIFICE ${val}`);
@@ -547,6 +565,9 @@
                 if(t==='def') { state.curEn.shd = (state.curEn.shd||0) + val; log(`EN SHIELD ${val}`); } 
                 if(t==='str') { state.curEn.str = (state.curEn.str||0) + val; log(`EN STR ${val}`); }
                 
+                // ★ 新增：敵人給玩家暫時卡牌
+                if(t==='add_card') { addTempCard(parseInt(vRaw)); }
+
                 if(t==='mark') { state.pMarks.push(vRaw.trim()); log(`MARKED: ${vRaw.trim()}`); }
                 if(t==='unmark') { const i=state.pMarks.indexOf(vRaw.trim()); if(i>-1) state.pMarks.splice(i,1); }
                 if(t==='psn') { state.pPsn += val; log(`POISONED ${val}`); }
@@ -648,6 +669,7 @@
                 if(k==='req') return `<span class="tag-badge bg-req">REQ ${v}</span>`;
                 if(k==='reqme') return `<span class="tag-badge bg-req">NEED ${v}</span>`;
                 if(k==='once') return `<span class="tag-badge bg-once">ONCE</span>`;
+                if(k==='add_card') return `<span class="tag-badge bg-add">ADD #${v}</span>`;
                 return `<span class="tag-badge bg-eng">${k.toUpperCase()} ${v}</span>`;
             });
         }
@@ -655,18 +677,7 @@
         function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
         function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
         function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
-        function resolveVal(valStr) {
-            if (!valStr || valStr.toString().trim() === "") return 1;
-            if (isNaN(valStr) && !valStr.includes('{')) return 1;
-            if (!isNaN(valStr)) return parseFloat(valStr);
-            const en = state.curEn; const h=state.hand.length; 
-            let x = valStr.toString().toLowerCase()
-                .replace(/{hp}/g,state.pHP).replace(/{mhp}/g,state.pMaxHP).replace(/{shd}/g,state.pShd)
-                .replace(/{str}/g,state.pStr).replace(/{eng}/g,state.eng).replace(/{hand}/g,h)
-                .replace(/{en_hp}/g,en?en.curHP:0).replace(/{en_mhp}/g,en?en.hp:0).replace(/{en_psn}/g,en?en.psn:0).replace(/{en_vuln}/g,en?en.vuln:0);
-            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
-        }
-
+        
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
             document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;

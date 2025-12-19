@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.6 - Drain Fix</title>
+    <title>Steampunk Duelist v10.7 - Separate Enemy Skills</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -39,7 +39,7 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* --- 遮罩層 --- */
+        /* 遮罩層 */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 10000;
@@ -74,7 +74,7 @@
         }
         @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
 
-        /* --- 頂部 --- */
+        /* 頂部 */
         #top-bar {
             width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
             padding: 0 20px; z-index: 100; pointer-events: none; margin-top: 30px;
@@ -93,7 +93,7 @@
             border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* --- 戰鬥區 --- */
+        /* 戰鬥區 */
         #battle-area {
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             padding-top: 20px; gap: 15px; position: relative; width: 100%;
@@ -117,7 +117,6 @@
             from { transform: scale(1); box-shadow: 0 0 40px var(--boss-purple); } 
             to { transform: scale(1.02); box-shadow: 0 0 80px var(--boss-purple), 0 0 20px #fff; } 
         }
-        
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
 
         #player-box {
@@ -127,7 +126,6 @@
         }
         #player-box:hover { background: rgba(255,255,255,0.05); }
 
-        /* --- 狀態顯示 --- */
         .status-row { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; margin: 8px 0; align-items: center; }
         .status-badge {
             display: inline-flex; align-items: center; justify-content: center;
@@ -152,7 +150,7 @@
         .hp-fill { height: 100%; width: 100%; position: absolute; left: 0; top: 0; transition: 0.4s; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2; }
 
-        /* --- 操作區 --- */
+        /* 操作區 */
         #action-area {
             height: 240px; width: 100%; position: relative;
             display: flex; justify-content: center; align-items: flex-end;
@@ -410,7 +408,7 @@
             try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
         }
 
-        // --- 核心傷害計算 (玩家打敵人) ---
+        // 玩家攻擊敵人 (扣除敵人護盾)
         function dmgEn(v) {
             let d = v + state.pStr; 
             if(state.curEn.vuln>0) d=Math.floor(d*1.5);
@@ -482,7 +480,7 @@
             }
             
             if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
-            else { enemyAction(); }
+            else { try{ enemyAction(); } catch(e){ console.error(e); } }
             
             if(state.curEn.vuln>0) state.curEn.vuln--; 
             if(state.curEn.weak>0) state.curEn.weak--; 
@@ -490,32 +488,21 @@
             newTurn();
         };
 
-        // --- ★ 核心邏輯：敵人傷害計算 & 行動 ---
-        function dealDamageToPlayer(baseVal) {
+        // --- ★ 敵人傷害/行動核心 (獨立邏輯) ---
+        
+        // 敵人對玩家造成的實際傷害計算
+        function calculateEnemyDmgToPlayer(baseVal) {
             let inc = baseVal + (state.curEn.str||0); 
             if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
             if(state.pVuln>0) inc=Math.floor(inc*1.5);
             
             let dmgToHp = inc;
-            let blocked = 0;
-
             if(state.pShd >= inc) {
-                state.pShd -= inc;
-                blocked = inc;
-                dmgToHp = 0;
-                log("BLOCKED");
+                state.pShd -= inc; dmgToHp = 0; log("BLOCKED");
             } else {
-                blocked = state.pShd;
-                dmgToHp -= state.pShd;
-                state.pShd = 0;
+                dmgToHp -= state.pShd; state.pShd = 0;
             }
-
-            if(dmgToHp > 0) {
-                state.pHP -= dmgToHp;
-                log(`TOOK ${dmgToHp}`);
-                visualFlash('player-box', 'dmg');
-            }
-            return dmgToHp; // 回傳「實際扣血量」供吸血使用
+            return dmgToHp;
         }
 
         function enemyAction() {
@@ -528,28 +515,35 @@
             while((m=reg.exec(currentAct))!==null) {
                 const t=m[1], vRaw=m[2], val=resolveVal(vRaw);
                 
-                if(t==='dmg') { dealDamageToPlayer(val); }
+                // 一般攻擊
+                if(t==='dmg') {
+                    const dealt = calculateEnemyDmgToPlayer(val);
+                    if(dealt > 0) { state.pHP -= dealt; log(`TOOK ${dealt}`); visualFlash('player-box','dmg'); }
+                }
                 
-                // ★ 新增：吸血 (Drain)
-                if(t==='drain') { 
-                    const dealt = dealDamageToPlayer(val); 
+                // ★ 新增：敵人專用吸血 [#en_drain]
+                if(t==='en_drain') {
+                    const dealt = calculateEnemyDmgToPlayer(val);
                     if(dealt > 0) {
+                        state.pHP -= dealt;
                         state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP + dealt);
-                        log(`DRAIN HEAL ${dealt}`);
+                        log(`DRAIN ${dealt}`);
+                        visualFlash('player-box', 'dmg');
                         visualFlash('enemy-target', 'pure');
+                    } else {
+                        log("DRAIN BLOCKED");
                     }
                 }
 
-                if(t==='heal') { state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP+val); log(`EN HEAL ${val}`); }
-                
-                // ★ 修正：自殘 (Self Damage) 
-                if(t==='sdmg') { 
-                    state.curEn.curHP -= val; 
-                    log(`EN SACRIFICE ${val}`); 
+                // ★ 新增：敵人專用自殘 [#en_sdmg]
+                if(t==='en_sdmg') {
+                    state.curEn.curHP -= val;
+                    log(`EN SACRIFICE ${val}`);
                     visualFlash('enemy-target','dmg');
-                    if(state.curEn.curHP <= 0) { checkWin(); return; } // 自殺檢測
+                    if(state.curEn.curHP <= 0) { checkWin(); return; }
                 }
 
+                if(t==='heal') { state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP+val); log(`EN HEAL ${val}`); }
                 if(t==='def') { state.curEn.shd = (state.curEn.shd||0) + val; log(`EN SHIELD ${val}`); } 
                 if(t==='str') { state.curEn.str = (state.curEn.str||0) + val; log(`EN STR ${val}`); }
                 
@@ -661,7 +655,18 @@
         function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
         function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
         function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
-        
+        function resolveVal(valStr) {
+            if (!valStr || valStr.toString().trim() === "") return 1;
+            if (isNaN(valStr) && !valStr.includes('{')) return 1;
+            if (!isNaN(valStr)) return parseFloat(valStr);
+            const en = state.curEn; const h=state.hand.length; 
+            let x = valStr.toString().toLowerCase()
+                .replace(/{hp}/g,state.pHP).replace(/{mhp}/g,state.pMaxHP).replace(/{shd}/g,state.pShd)
+                .replace(/{str}/g,state.pStr).replace(/{eng}/g,state.eng).replace(/{hand}/g,h)
+                .replace(/{en_hp}/g,en?en.curHP:0).replace(/{en_mhp}/g,en?en.hp:0).replace(/{en_psn}/g,en?en.psn:0).replace(/{en_vuln}/g,en?en.vuln:0);
+            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
+        }
+
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
             document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;

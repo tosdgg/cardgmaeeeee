@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.1 - High Visibility</title>
+    <title>Steampunk Duelist v10.2 - Chinese Labels</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
         :root {
             --brass: #b5a642; --bronze: #cd7f32; --gold: #ffd700;
             --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
-            --danger: #ff3333; --success: #33ff33; --shield: #00ccff; --poison: #cc00ff;
+            --danger: #ff4444; --success: #44ff44; --shield: #00aaff; --poison: #bf00ff;
             --str: #ff9900; --vuln: #ff0066; --weak: #99cc00;
             --boss-purple: #b300ff; --boss-red-bg: #3a0000;
         }
@@ -19,7 +19,7 @@
 
         body {
             margin: 0; padding: 0; background: #120f0d;
-            color: var(--parchment); font-family: 'IM Fell English SC', serif;
+            color: var(--parchment); font-family: 'IM Fell English SC', "微軟正黑體", sans-serif;
             overflow: hidden; height: 100vh; width: 100vw; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
             transition: background-image 1.5s ease-in-out; touch-action: manipulation;
@@ -39,14 +39,13 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* --- 遮罩層 --- */
+        /* --- 遮罩層 (過場/選牌) --- */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 10000;
             display: none; flex-direction: column; align-items: center; justify-content: center;
             backdrop-filter: blur(5px);
         }
-        
         #pile-viewer-content {
             display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
             max-width: 90%; max-height: 80vh; overflow-y: auto; padding: 20px;
@@ -54,7 +53,7 @@
         .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; }
         .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
 
-        /* 過場畫面 */
+        /* 過場獎勵 */
         .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
         .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
         #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
@@ -75,7 +74,7 @@
         }
         @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
 
-        /* --- 頂層資訊 --- */
+        /* --- 頂部資訊 --- */
         #top-bar {
             width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
             padding: 0 20px; z-index: 100; pointer-events: none;
@@ -112,7 +111,6 @@
         .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
         .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple); animation: boss-pulse 1.5s infinite alternate; }
         @keyframes boss-pulse { from { box-shadow: 0 0 30px var(--boss-purple); } to { box-shadow: 0 0 60px var(--boss-purple); } }
-        
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
 
         #player-box {
@@ -122,43 +120,31 @@
         }
         #player-box:hover { background: rgba(255,255,255,0.05); }
 
-        /* --- ★ 狀態顯示 (極致優化版) --- */
+        /* --- ★ 狀態顯示 (Unified Chinese Badge) --- */
         .status-row { 
-            display: flex; gap: 8px; flex-wrap: wrap; 
-            min-height: 32px; margin: 10px 0; /* 增加高度與間距 */
-            align-items: center;
+            display: flex; gap: 6px; flex-wrap: wrap; 
+            min-height: 28px; margin: 8px 0; align-items: center;
         }
         
-        /* 狀態圖示 (Poison, Shield 等) */
-        .status-icon { 
+        /* 統一的狀態方塊樣式 */
+        .status-badge {
             display: inline-flex; align-items: center; justify-content: center;
-            height: 32px; padding: 0 12px; border-radius: 16px; /* 圓角膠囊 */
-            font-weight: 900; font-family: sans-serif; font-size: 1.1rem; /* 字體加大 */
-            color: #fff; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; /* 強烈描邊 */
-            border: 2px solid #fff; box-shadow: 0 3px 6px rgba(0,0,0,0.8);
-            z-index: 5;
-        }
-        
-        /* 文字標記 (Mark, Stance 等) */
-        .status-text { 
-            display: inline-flex; align-items: center; justify-content: center;
-            height: 28px; padding: 0 10px; border-radius: 4px;
-            font-family: 'IM Fell English SC', serif; font-size: 0.95rem; font-weight: bold;
-            color: #ffd700; background: #333; 
-            border: 2px solid var(--bronze); box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            text-shadow: 1px 1px 2px #000;
+            padding: 3px 8px; border-radius: 4px;
+            font-size: 0.9rem; font-weight: bold; font-family: "微軟正黑體", sans-serif;
+            color: #fff; text-shadow: 1px 1px 0 #000;
+            border: 1px solid rgba(255,255,255,0.5);
+            background: #444; box-shadow: 1px 1px 3px #000;
         }
 
-        /* 顏色定義 (加亮) */
-        .st-poison { background: var(--poison); border-color: #f0f; }
+        /* 顏色定義 */
+        .st-poison { background: var(--poison); border-color: #d0d; }
         .st-shield { background: var(--shield); border-color: #aaf; }
         .st-str    { background: var(--str); border-color: #fc0; }
         .st-vuln   { background: var(--vuln); border-color: #f99; }
         .st-weak   { background: var(--weak); color: #fff; border-color: #df0; }
         .st-stun   { background: #555; border: 2px dashed #fff; }
-        
-        .marker-lockon { background: #500; border-color: #f00; color: #fff; } 
-        .marker-stance { background: #004; border-color: #0ff; color: #fff; }
+        /* 自定義標記預設色 */
+        .st-mark   { background: #333; color: #ffd700; border-color: var(--bronze); }
 
         .hp-bar-frame {
             width: 100%; height: 20px; background: #111; border: 2px solid var(--brass);
@@ -188,7 +174,6 @@
         }
         .card:hover { transform: translateY(-50px) scale(1.1) !important; z-index: 100; margin: 0 5px; }
         .card.selected { transform: translateY(-80px) scale(1.15) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
-        
         .card-cost { position: absolute; top: -12px; left: -12px; width: 32px; height: 32px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem; z-index: 2; }
         .card-name { padding:10px 2px; text-align:center; font-family:'Rye'; font-size:0.9rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
         .card-desc { margin-top: 15px; text-align: center; font-size: 0.75rem; color: #421; padding: 0 8px; line-height: 1.3; font-weight: bold;}
@@ -211,7 +196,7 @@
 
         /* RWD */
         @media (min-width: 769px) and (max-width: 1366px) {
-            #battle-area { padding-top: 80px; } /* 下移避開跑馬燈 */
+            #battle-area { padding-top: 80px; }
             .enemy-box { width: 320px; padding: 10px; }
             #player-box { width: 320px; }
             .card { width: 110px; height: 160px; }
@@ -227,16 +212,17 @@
             .round-box { width: 45px; height: 55px; margin-right: 5px; }
 
             #battle-area { padding-top: 90px; gap: 10px; justify-content: flex-start; }
-            
             .enemy-box { width: 90%; padding: 10px; margin-top: 0; }
             #player-box { width: 90%; margin-top: 5px; }
             
-            #action-area { height: 180px; }
+            /* ★ 手機版卡牌上移 (bottom: 30px) */
+            #hand-area { height: 180px; bottom: 30px; }
             .card { width: 90px; height: 130px; margin: 0 -10px; }
             .card-name { font-size: 0.6rem; padding: 5px 0; }
             .card-desc { font-size: 0.5rem; margin-top: 5px; padding: 0 2px; }
             .card-cost { width: 22px; height: 22px; font-size: 0.9rem; top: -8px; left: -8px; }
 
+            /* ★ 按鈕修復 (right: 15px) */
             #end-btn { width: 65px; height: 65px; font-size: 0.8rem; }
             #piles-ui { bottom: 120px; left: 10px; flex-direction: column; gap: 5px; } 
             .pile-btn { width: 40px; height: 50px; }
@@ -266,7 +252,8 @@
                 <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem; line-height:1;">LOADING</div>
                 <div id="ui-en-intent" style="color:var(--steam-blue); font-size:0.8rem;"></div>
             </div>
-            <div id="en-status" class="status-row"></div> <div class="hp-bar-frame">
+            <div id="en-status" class="status-row"></div>
+            <div class="hp-bar-frame">
                 <div id="ui-en-hp-fill" class="hp-fill" style="background:var(--danger);"></div>
             </div>
             <div id="ui-en-hp-text" style="text-align:right; font-size:0.8rem; color:#888;">-- / --</div>
@@ -277,7 +264,8 @@
                 <span style="font-family:'Rye'; color:#aaa;">PLAYER CORE</span>
                 <span id="ui-pl-hp-text" style="font-size:0.9rem;">100 / 100</span>
             </div>
-            <div id="pl-status" class="status-row"></div> <div class="hp-bar-frame">
+            <div id="pl-status" class="status-row"></div>
+            <div class="hp-bar-frame">
                 <div id="ui-pl-hp-fill" class="hp-fill" style="background:var(--success);"></div>
                 <div id="ui-pl-shield-fill" class="shield-fill"></div>
             </div>
@@ -586,6 +574,11 @@
             });
         }
 
+        function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
+        function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
+        function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
+        
+        // --- ★ 統一狀態渲染 (Unified Chinese Badge) ---
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
             document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;
@@ -598,39 +591,33 @@
             document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, (state.pHP/state.pMaxHP)*100)+'%';
             document.getElementById('ui-pl-shield-fill').style.width = state.pShd>0 ? Math.min(100,(state.pShd/state.pMaxHP)*100)+'%' : '0%';
             
+            // Player Status
             const pb = document.getElementById('pl-status'); pb.innerHTML='';
-            if(state.pShd>0) pb.innerHTML+=`<span class="status-icon st-shield">${state.pShd}</span>`;
-            if(state.pStr>0) pb.innerHTML+=`<span class="status-icon st-str">${state.pStr}</span>`;
-            countMarks(state.pMarks).forEach(m=> pb.innerHTML+=`<span class="status-text ${getMarkClass(m.n)}">${m.n}${m.c>1?' x'+m.c:''}</span>`);
+            if(state.pShd>0) pb.innerHTML+=makeBadge('護盾', state.pShd, 'st-shield');
+            if(state.pStr>0) pb.innerHTML+=makeBadge('力量', state.pStr, 'st-str');
+            countMarks(state.pMarks).forEach(m=> pb.innerHTML+=makeBadge(m.n, m.c>1?m.c:'', 'st-mark'));
 
+            // Enemy Status
             if(state.curEn) {
                 const e = state.curEn;
                 document.getElementById('ui-en-name').innerText = e.name;
                 document.getElementById('ui-en-hp-text').innerText = `${e.curHP}/${e.hp}`;
                 document.getElementById('ui-en-hp-fill').style.width = Math.max(0, (e.curHP/e.hp)*100)+'%';
-                
-                const act = e.acts[e.step % e.acts.length];
-                document.getElementById('ui-en-intent').innerText = `INTENT: ${act}`;
+                document.getElementById('ui-en-intent').innerText = `INTENT: ${e.acts[e.step % e.acts.length]}`;
 
                 const eb = document.getElementById('en-status'); eb.innerHTML='';
-                if(e.psn>0) eb.innerHTML+=`<span class="status-icon st-poison">${e.psn}</span>`;
-                if(e.vuln>0) eb.innerHTML+=`<span class="status-icon st-vuln">${e.vuln}</span>`;
-                if(e.weak>0) eb.innerHTML+=`<span class="status-icon st-weak">${e.weak}</span>`;
-                if(e.stun) eb.innerHTML+=`<span class="status-icon st-stun">STUN</span>`;
-                countMarks(e.marks).forEach(m=> eb.innerHTML+=`<span class="status-text ${getMarkClass(m.n)}">${m.n}${m.c>1?' x'+m.c:''}</span>`);
+                if(e.psn>0) eb.innerHTML+=makeBadge('中毒', e.psn, 'st-poison');
+                if(e.vuln>0) eb.innerHTML+=makeBadge('易傷', e.vuln, 'st-vuln');
+                if(e.weak>0) eb.innerHTML+=makeBadge('虛弱', e.weak, 'st-weak');
+                if(e.stun) eb.innerHTML+=makeBadge('暈眩', '', 'st-stun');
+                countMarks(e.marks).forEach(m=> eb.innerHTML+=makeBadge(m.n, m.c>1?m.c:'', 'st-mark'));
             }
             if(state.pHP<=0) { setTimeout(()=>location.reload(), 500); alert("DEFEAT"); }
         }
 
-        function getMarkClass(name) {
-            if(name === '鎖定') return 'marker-lockon';
-            if(name === '架式') return 'marker-stance';
-            return '';
+        function makeBadge(name, val, cls) {
+            return `<div class="status-badge ${cls}">${name}${val?' '+val:''}</div>`;
         }
-
-        function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
-        function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
-        function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
         
         document.body.onclick = () => { if(state.sel) cancelSel(); };
     </script>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v8.4 - Marker System</title>
+    <title>Steampunk Duelist v8.5 - Stacking Markers</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -51,9 +51,7 @@
         .status-bar { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; height: 24px; }
         
         .status-icon { display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; border-radius: 4px; font-weight: bold; font-family: sans-serif; font-size: 0.8rem; box-shadow: 1px 1px 2px #000; color: #fff; border: 1px solid rgba(255,255,255,0.3); }
-        /* ★ 新增：文字標籤樣式 */
         .status-text { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 4px; font-family: 'IM Fell English SC', serif; font-size: 0.8rem; color: #fff; border: 1px solid rgba(255,255,255,0.5); background: #444; margin-right: 4px; box-shadow: 1px 1px 3px #000; text-shadow: 1px 1px 0 #000; }
-        /* 範例：特定標籤顏色 */
         .marker-lockon { background: #ff0055; border-color: #ffaaaa; } 
         .marker-stance { background: #00aaff; border-color: #aaffff; }
 
@@ -76,7 +74,6 @@
         .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; }
         .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; }
         .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; }
-        /* 新增 Tag 樣式 */
         .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; }
 
         .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; position: relative; }
@@ -138,7 +135,7 @@
 
         let state = {
             playerHP: 100, playerMaxHP: 100, playerShield: 0, playerStr: 0,
-            playerMarkers: [], // ★ 新增：玩家狀態陣列
+            playerMarkers: [],
             energy: 3, maxEnergy: 3, round: 1,
             cardPool: [], enemyPool: [], waveConfig: [],
             currentWave: [], currentEnemy: null, enemyWaveIdx: 0, selectedCard: null
@@ -160,7 +157,6 @@
 
         function resolveVal(valStr) {
             if (!valStr || valStr.toString().trim() === "") return 1;
-            // 如果是純文字(且不是數字)，直接回傳 1 (給 mark 這種不需要數字的標籤用)
             if (isNaN(valStr) && !valStr.includes('{')) return 1;
             if (!isNaN(valStr)) return parseFloat(valStr);
             let expr = valStr.toString().toLowerCase()
@@ -189,7 +185,7 @@
                 state.currentEnemy = { 
                     ...raw, curHP: raw.hp, actionStep: 0, 
                     poison: 0, vulnerable: 0, weak: 0, stunned: false,
-                    markers: [] // ★ 新增：敵人狀態陣列
+                    markers: [] 
                 };
                 state.enemyWaveIdx++;
                 const box = document.getElementById('enemy-target');
@@ -207,12 +203,11 @@
                 const el = document.createElement('div');
                 el.className = 'card';
                 let niceDesc = d.effect;
-                // 更新視覺：標記與需求
                 niceDesc = niceDesc.replace(/\[#mark\s+(.*?)\]/g, '<span class="tag-badge bg-mark">$1</span>');
                 niceDesc = niceDesc.replace(/\[#req\s+(.*?)\]/g, '<span class="tag-badge bg-req">REQ: $1</span>');
                 niceDesc = niceDesc.replace(/\[#reqme\s+(.*?)\]/g, '<span class="tag-badge bg-req">NEED: $1</span>');
                 niceDesc = niceDesc.replace(/\[#unmark\s+(.*?)\]/g, '<span class="tag-badge bg-draw">CLR: $1</span>');
-                // 原本的標籤
+                
                 niceDesc = niceDesc.replace(/\[#dmg\s+(.*?)\]/g, '<span class="tag-badge bg-dmg">DMG $1</span>');
                 niceDesc = niceDesc.replace(/\[#def\s+(.*?)\]/g, '<span class="tag-badge bg-def">DEF $1</span>');
                 niceDesc = niceDesc.replace(/\[#heal\s+(.*?)\]/g, '<span class="tag-badge bg-heal">HEAL $1</span>');
@@ -241,8 +236,6 @@
         }
 
         function select(el, d) {
-            // ★ 新增：條件檢查邏輯
-            // 1. 檢查敵人標記 [#req TAG]
             const reqMatch = /\[#req\s+(.*?)\]/.exec(d.effect);
             if (reqMatch) {
                 const reqTag = reqMatch[1].trim();
@@ -252,7 +245,6 @@
                     return cancel();
                 }
             }
-            // 2. 檢查玩家標記 [#reqme TAG]
             const reqMeMatch = /\[#reqme\s+(.*?)\]/.exec(d.effect);
             if (reqMeMatch) {
                 const reqTag = reqMeMatch[1].trim();
@@ -289,18 +281,22 @@
             let m;
             while((m = reg.exec(d.effect)) !== null) {
                 const tag = m[1];
-                const rawVal = m[2]; // 保留原始字串供 mark 使用
-                const val = resolveVal(rawVal); // 嘗試解析為數字
+                const rawVal = m[2]; 
+                const val = resolveVal(rawVal); 
 
-                // ★ 新增：標記處理
+                // ★ 修改 1：移除狀態疊加的阻擋邏輯，直接 push
                 if(tag === 'mark') {
                     const markerName = rawVal.trim();
                     if(target === 'enemy') {
-                        if(!state.currentEnemy.markers.includes(markerName)) { state.currentEnemy.markers.push(markerName); showLog(`MARKED: ${markerName}`); }
+                        state.currentEnemy.markers.push(markerName); 
+                        showLog(`MARKED: ${markerName}`);
                     } else {
-                        if(!state.playerMarkers.includes(markerName)) { state.playerMarkers.push(markerName); showLog(`STATE: ${markerName}`); }
+                        state.playerMarkers.push(markerName); 
+                        showLog(`STATE: ${markerName}`);
                     }
                 }
+                
+                // ★ 修改 2：移除狀態 (僅移除 1 層)
                 if(tag === 'unmark') {
                     const markerName = rawVal.trim();
                     if(target === 'enemy') {
@@ -379,7 +375,6 @@
             while((m = reg.exec(currentAct)) !== null) {
                 const tag = m[1], val = parseInt(m[2])||0;
                 if(tag === 'dmg') playerTakeDamage(val);
-                // 擴充：敵人也可以給自己上狀態 (如果需要的話可以加在這邊)
             }
             state.currentEnemy.actionStep++;
         }
@@ -399,6 +394,13 @@
             setTimeout(()=> el.style.filter = "", 100);
         }
 
+        // ★ 新增 helper：計算狀態重複次數
+        function getGroupedMarkers(markers) {
+            const counts = {};
+            markers.forEach(m => { counts[m] = (counts[m] || 0) + 1; });
+            return Object.entries(counts).map(([name, count]) => ({name, count}));
+        }
+
         function updateUI() {
             if(state.currentEnemy) {
                 document.getElementById('ui-en-name').innerText = state.currentEnemy.name;
@@ -408,10 +410,13 @@
                 document.getElementById('ui-en-hp-text').innerText = `${state.currentEnemy.curHP} / ${state.currentEnemy.hp}`;
                 
                 const sBar = document.getElementById('en-status'); sBar.innerHTML = '';
-                // ★ 新增：顯示敵人文字標記
-                state.currentEnemy.markers.forEach(m => {
-                   const cls = 'marker-' + m.toLowerCase(); 
-                   sBar.innerHTML += `<div class="status-text ${cls}">${m}</div>`;
+                
+                // ★ 修改：渲染敵人標記 (合併顯示數量)
+                const groupedEn = getGroupedMarkers(state.currentEnemy.markers);
+                groupedEn.forEach(item => {
+                   const cls = 'marker-' + item.name.toLowerCase(); 
+                   const countStr = item.count > 1 ? ` x${item.count}` : '';
+                   sBar.innerHTML += `<div class="status-text ${cls}">${item.name}${countStr}</div>`;
                 });
                 
                 const addIcon = (txt, cls) => sBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
@@ -431,10 +436,13 @@
             sFill.style.width = state.playerShield > 0 ? Math.min(100, (state.playerShield/state.playerMaxHP)*100) + '%' : '0%';
             
             const pBar = document.getElementById('pl-status'); pBar.innerHTML = '';
-            // ★ 新增：顯示玩家文字標記
-            state.playerMarkers.forEach(m => {
-                const cls = 'marker-' + m.toLowerCase(); 
-                pBar.innerHTML += `<div class="status-text ${cls}">${m}</div>`;
+            
+            // ★ 修改：渲染玩家標記 (合併顯示數量)
+            const groupedPl = getGroupedMarkers(state.playerMarkers);
+            groupedPl.forEach(item => {
+                const cls = 'marker-' + item.name.toLowerCase(); 
+                const countStr = item.count > 1 ? ` x${item.count}` : '';
+                pBar.innerHTML += `<div class="status-text ${cls}">${item.name}${countStr}</div>`;
             });
 
             const addPIcon = (txt, cls) => pBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;

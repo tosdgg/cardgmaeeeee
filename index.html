@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.2 - Chinese Labels</title>
+    <title>Steampunk Duelist v10.3 - Enemy Skills</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -39,7 +39,7 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* --- 遮罩層 (過場/選牌) --- */
+        /* --- 遮罩層 --- */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 10000;
@@ -53,7 +53,7 @@
         .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; }
         .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
 
-        /* 過場獎勵 */
+        /* 過場 */
         .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
         .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
         #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
@@ -74,7 +74,7 @@
         }
         @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
 
-        /* --- 頂部資訊 --- */
+        /* --- 頂部 --- */
         #top-bar {
             width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
             padding: 0 20px; z-index: 100; pointer-events: none;
@@ -120,13 +120,11 @@
         }
         #player-box:hover { background: rgba(255,255,255,0.05); }
 
-        /* --- ★ 狀態顯示 (Unified Chinese Badge) --- */
+        /* --- 狀態顯示 --- */
         .status-row { 
             display: flex; gap: 6px; flex-wrap: wrap; 
             min-height: 28px; margin: 8px 0; align-items: center;
         }
-        
-        /* 統一的狀態方塊樣式 */
         .status-badge {
             display: inline-flex; align-items: center; justify-content: center;
             padding: 3px 8px; border-radius: 4px;
@@ -135,15 +133,12 @@
             border: 1px solid rgba(255,255,255,0.5);
             background: #444; box-shadow: 1px 1px 3px #000;
         }
-
-        /* 顏色定義 */
         .st-poison { background: var(--poison); border-color: #d0d; }
         .st-shield { background: var(--shield); border-color: #aaf; }
         .st-str    { background: var(--str); border-color: #fc0; }
         .st-vuln   { background: var(--vuln); border-color: #f99; }
         .st-weak   { background: var(--weak); color: #fff; border-color: #df0; }
         .st-stun   { background: #555; border: 2px dashed #fff; }
-        /* 自定義標記預設色 */
         .st-mark   { background: #333; color: #ffd700; border-color: var(--bronze); }
 
         .hp-bar-frame {
@@ -215,14 +210,12 @@
             .enemy-box { width: 90%; padding: 10px; margin-top: 0; }
             #player-box { width: 90%; margin-top: 5px; }
             
-            /* ★ 手機版卡牌上移 (bottom: 30px) */
             #hand-area { height: 180px; bottom: 30px; }
             .card { width: 90px; height: 130px; margin: 0 -10px; }
             .card-name { font-size: 0.6rem; padding: 5px 0; }
             .card-desc { font-size: 0.5rem; margin-top: 5px; padding: 0 2px; }
             .card-cost { width: 22px; height: 22px; font-size: 0.9rem; top: -8px; left: -8px; }
 
-            /* ★ 按鈕修復 (right: 15px) */
             #end-btn { width: 65px; height: 65px; font-size: 0.8rem; }
             #piles-ui { bottom: 120px; left: 10px; flex-direction: column; gap: 5px; } 
             .pile-btn { width: 40px; height: 50px; }
@@ -315,6 +308,8 @@
 
         let state = {
             pHP: 100, pMaxHP: 100, pShd: 0, pStr: 0, pMarks: [],
+            // ★ 新增：玩家負面狀態
+            pPsn: 0, pVuln: 0, pWeak: 0,
             eng: 3, maxEng: 3, maxHand: 5, round: 1,
             lib: [], deck: [], draw: [], disc: [], hand: [],
             enPool: [], waves: [], curWave: [], curEn: null, wIdx: 0,
@@ -353,6 +348,9 @@
             if(state.wIdx >= state.curWave.length) return showReward();
             const raw = state.curWave[state.wIdx];
             state.curEn = { ...raw, curHP: raw.hp, hp:raw.hp, step:0, psn:0, vuln:0, weak:0, stun:false, marks:[] };
+            // ★ 新增：初始化敵人護盾/力量 (如果未來擴充需要)
+            state.curEn.shd = 0; state.curEn.str = 0; 
+            
             state.wIdx++;
             if(state.curEn.type===4) { document.body.classList.add('boss-mode'); log("BOSS WARNING"); }
             document.getElementById('enemy-target').className = 'enemy-box tier-'+state.curEn.type;
@@ -383,10 +381,13 @@
                 if(t==='hand_limit') { state.maxHand=Math.max(0,state.maxHand+val); log(`HAND MAX ${val>0?'+':''}${val}`); }
                 if(t==='mark') { const n=vRaw.trim(); if(state.sel.target==='en'){ state.curEn.marks.push(n); }else{ state.pMarks.push(n); } log(`MARK: ${n}`); }
                 if(t==='unmark') { const n=vRaw.trim(); const arr=state.sel.target==='en'?state.curEn.marks:state.pMarks; const i=arr.indexOf(n); if(i>-1) arr.splice(i,1); }
+                
+                // ★ 玩家對敵人施放 Debuff
                 if(t==='psn') { state.curEn.psn+=val; log(`POISON ${val}`); }
                 if(t==='vuln') { state.curEn.vuln+=val; log(`VULN ${val}`); }
                 if(t==='weak') { state.curEn.weak+=val; log(`WEAK ${val}`); }
                 if(t==='stun') { state.curEn.stun=true; log("STUNNED"); }
+                
                 if(t==='sdmg') { state.pHP-=val; log(`HURT ${val}`); }
                 if(t==='str') { state.pStr+=val; log(`STR ${val}`); }
                 if(t==='drain') { const d=dmgEn(val); state.pHP=Math.min(state.pMaxHP, state.pHP+d); log(`DRAIN ${d}`); }
@@ -411,7 +412,11 @@
         }
 
         function dmgEn(v) {
-            let d = v + state.pStr; if(state.curEn.vuln>0) d=Math.floor(d*1.5);
+            let d = v + state.pStr; 
+            if(state.curEn.vuln>0) d=Math.floor(d*1.5);
+            // ★ 新增：如果玩家虛弱，傷害降低
+            if(state.pWeak>0) d=Math.floor(d*0.75);
+            
             state.curEn.curHP-=d; log(`HIT ${d}`); visualFlash('enemy-target','dmg'); return d;
         }
 
@@ -460,30 +465,75 @@
         document.getElementById('end-btn').onclick = () => {
             if(!state.curEn) return;
             state.hand.forEach(c=>state.disc.push(c)); state.hand=[]; renderHand();
+            
+            // 敵人中毒結算
             if(state.curEn.psn>0) { 
-                state.curEn.curHP-=state.curEn.psn; state.curEn.psn--; log(`POISON ${state.curEn.psn+1}`);
+                state.curEn.curHP-=state.curEn.psn; state.curEn.psn--; log(`ENEMY POISON ${state.curEn.psn+1}`);
                 if(state.curEn.curHP<=0) { nextEn(); newTurn(); return; }
             }
+            
             if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
-            else {
-                const act = state.curEn.acts[(state.curEn.step++) % state.curEn.acts.length];
-                const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
-                while((m=reg.exec(act))!==null) {
-                    const t=m[1], v=calc(m[2]);
-                    if(t==='dmg') {
-                        let inc = v; if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
-                        let rem = inc;
-                        if(state.pShd>=rem) { state.pShd-=rem; rem=0; log("BLOCKED"); } else { rem-=state.pShd; state.pShd=0; }
-                        if(rem>0) { state.pHP-=rem; log(`TOOK ${rem}`); visualFlash('player-box','dmg'); }
-                    }
-                    if(t==='heal') { state.curEn.curHP+=v; log(`EN HEAL ${v}`); }
-                    if(t==='mark') { state.pMarks.push(m[2].trim()); log(`MARKED: ${m[2]}`); }
-                }
-            }
-            if(state.curEn.vuln>0) state.curEn.vuln--; if(state.curEn.weak>0) state.curEn.weak--; newTurn();
+            else { enemyAction(); } // 執行敵人行動
+            
+            if(state.curEn.vuln>0) state.curEn.vuln--; 
+            if(state.curEn.weak>0) state.curEn.weak--; 
+            
+            newTurn();
         };
 
-        function newTurn() { state.pShd=0; state.eng=state.maxEng; drawCard(5); update(); }
+        // ★ 核心修改：敵人行動全面升級
+        function enemyAction() {
+            const acts = state.curEn.acts; if(!acts.length) return;
+            const currentAct = acts[state.curEn.step % acts.length];
+            const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
+            while((m=reg.exec(currentAct))!==null) {
+                const t=m[1], vRaw=m[2], val=resolveVal(vRaw);
+                
+                // 1. 對玩家造成傷害
+                if(t==='dmg') {
+                    let inc = val + (state.curEn.str||0); 
+                    // 敵人虛弱 -> 玩家受傷減少
+                    if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
+                    // 玩家易傷 -> 玩家受傷增加
+                    if(state.pVuln>0) inc=Math.floor(inc*1.5);
+                    
+                    let rem = inc;
+                    if(state.pShd>=rem) { state.pShd-=rem; rem=0; log("BLOCKED"); } 
+                    else { rem-=state.pShd; state.pShd=0; }
+                    
+                    if(rem>0) { state.pHP-=rem; log(`TOOK ${rem}`); visualFlash('player-box','dmg'); }
+                }
+                
+                // 2. 敵人自我增益
+                if(t==='heal') { state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP+val); log(`EN HEAL ${val}`); }
+                if(t==='sdmg') { state.curEn.curHP -= val; log(`EN SACRIFICE ${val}`); visualFlash('enemy-target','dmg'); }
+                if(t==='def') { state.curEn.shd = (state.curEn.shd||0) + val; log(`EN SHIELD ${val}`); } // 注意：敵人護盾尚未實作視覺，這裡暫時僅邏輯
+                if(t==='str') { state.curEn.str = (state.curEn.str||0) + val; log(`EN STR ${val}`); }
+
+                // 3. 對玩家施加狀態
+                if(t==='mark') { state.pMarks.push(vRaw.trim()); log(`MARKED: ${vRaw.trim()}`); }
+                if(t==='unmark') { const i=state.pMarks.indexOf(vRaw.trim()); if(i>-1) state.pMarks.splice(i,1); }
+                if(t==='psn') { state.pPsn += val; log(`POISONED ${val}`); }
+                if(t==='vuln') { state.pVuln += val; log(`VULNERABLE ${val}`); }
+                if(t==='weak') { state.pWeak += val; log(`WEAKENED ${val}`); }
+            }
+            state.curEn.step++;
+        }
+
+        // ★ 新增：玩家回合開始結算
+        function newTurn() {
+            // 玩家中毒結算
+            if(state.pPsn > 0) {
+                state.pHP -= state.pPsn;
+                log(`POISON DMG ${state.pPsn}`);
+                state.pPsn--;
+            }
+            // 玩家狀態遞減
+            if(state.pVuln > 0) state.pVuln--;
+            if(state.pWeak > 0) state.pWeak--;
+
+            state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
+        }
 
         function showReward() {
             state.isRewardMode = true;
@@ -574,11 +624,22 @@
             });
         }
 
+        // --- Utils ---
         function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
         function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
         function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
-        
-        // --- ★ 統一狀態渲染 (Unified Chinese Badge) ---
+        function resolveVal(valStr) {
+            if (!valStr || valStr.toString().trim() === "") return 1;
+            if (isNaN(valStr) && !valStr.includes('{')) return 1;
+            if (!isNaN(valStr)) return parseFloat(valStr);
+            const en = state.curEn; const h=state.hand.length; 
+            let x = valStr.toString().toLowerCase()
+                .replace(/{hp}/g,state.pHP).replace(/{mhp}/g,state.pMaxHP).replace(/{shd}/g,state.pShd)
+                .replace(/{str}/g,state.pStr).replace(/{eng}/g,state.eng).replace(/{hand}/g,h)
+                .replace(/{en_hp}/g,en?en.curHP:0).replace(/{en_mhp}/g,en?en.hp:0).replace(/{en_psn}/g,en?en.psn:0).replace(/{en_vuln}/g,en?en.vuln:0);
+            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
+        }
+
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
             document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;
@@ -591,13 +652,15 @@
             document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, (state.pHP/state.pMaxHP)*100)+'%';
             document.getElementById('ui-pl-shield-fill').style.width = state.pShd>0 ? Math.min(100,(state.pShd/state.pMaxHP)*100)+'%' : '0%';
             
-            // Player Status
+            // ★ Player Status (統一用中文 Badge)
             const pb = document.getElementById('pl-status'); pb.innerHTML='';
             if(state.pShd>0) pb.innerHTML+=makeBadge('護盾', state.pShd, 'st-shield');
             if(state.pStr>0) pb.innerHTML+=makeBadge('力量', state.pStr, 'st-str');
+            if(state.pPsn>0) pb.innerHTML+=makeBadge('中毒', state.pPsn, 'st-poison');
+            if(state.pVuln>0) pb.innerHTML+=makeBadge('易傷', state.pVuln, 'st-vuln');
+            if(state.pWeak>0) pb.innerHTML+=makeBadge('虛弱', state.pWeak, 'st-weak');
             countMarks(state.pMarks).forEach(m=> pb.innerHTML+=makeBadge(m.n, m.c>1?m.c:'', 'st-mark'));
 
-            // Enemy Status
             if(state.curEn) {
                 const e = state.curEn;
                 document.getElementById('ui-en-name').innerText = e.name;
@@ -605,6 +668,7 @@
                 document.getElementById('ui-en-hp-fill').style.width = Math.max(0, (e.curHP/e.hp)*100)+'%';
                 document.getElementById('ui-en-intent').innerText = `INTENT: ${e.acts[e.step % e.acts.length]}`;
 
+                // ★ Enemy Status (統一用中文 Badge)
                 const eb = document.getElementById('en-status'); eb.innerHTML='';
                 if(e.psn>0) eb.innerHTML+=makeBadge('中毒', e.psn, 'st-poison');
                 if(e.vuln>0) eb.innerHTML+=makeBadge('易傷', e.vuln, 'st-vuln');

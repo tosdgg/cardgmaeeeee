@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v8.3 - Math Update</title>
+    <title>Steampunk Duelist v8.4 - Marker System</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -49,7 +49,14 @@
         
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
         .status-bar { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; height: 24px; }
+        
         .status-icon { display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; border-radius: 4px; font-weight: bold; font-family: sans-serif; font-size: 0.8rem; box-shadow: 1px 1px 2px #000; color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+        /* ★ 新增：文字標籤樣式 */
+        .status-text { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 4px; font-family: 'IM Fell English SC', serif; font-size: 0.8rem; color: #fff; border: 1px solid rgba(255,255,255,0.5); background: #444; margin-right: 4px; box-shadow: 1px 1px 3px #000; text-shadow: 1px 1px 0 #000; }
+        /* 範例：特定標籤顏色 */
+        .marker-lockon { background: #ff0055; border-color: #ffaaaa; } 
+        .marker-stance { background: #00aaff; border-color: #aaffff; }
+
         .st-poison { background: var(--poison); } .st-shield { background: var(--shield); } .st-str { background: var(--str); }
         .st-vuln { background: var(--vuln); } .st-weak { background: var(--weak); color: #000; } .st-stun { background: #555; border: 1px dashed #fff; }
 
@@ -69,6 +76,8 @@
         .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; }
         .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; }
         .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; }
+        /* 新增 Tag 樣式 */
+        .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; }
 
         .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; position: relative; }
         .hp-fill { height: 100%; width: 100%; transition: 0.4s; position: absolute; left: 0; top: 0; }
@@ -129,6 +138,7 @@
 
         let state = {
             playerHP: 100, playerMaxHP: 100, playerShield: 0, playerStr: 0,
+            playerMarkers: [], // ★ 新增：玩家狀態陣列
             energy: 3, maxEnergy: 3, round: 1,
             cardPool: [], enemyPool: [], waveConfig: [],
             currentWave: [], currentEnemy: null, enemyWaveIdx: 0, selectedCard: null
@@ -148,9 +158,10 @@
             }});
         }
 
-        // --- 核心運算器 ---
         function resolveVal(valStr) {
             if (!valStr || valStr.toString().trim() === "") return 1;
+            // 如果是純文字(且不是數字)，直接回傳 1 (給 mark 這種不需要數字的標籤用)
+            if (isNaN(valStr) && !valStr.includes('{')) return 1;
             if (!isNaN(valStr)) return parseFloat(valStr);
             let expr = valStr.toString().toLowerCase()
                 .replace(/{hp}/g, state.playerHP)
@@ -159,7 +170,7 @@
                 .replace(/{str}/g, state.playerStr)
                 .replace(/{eng}/g, state.energy)
                 .replace(/{loss}/g, (state.playerMaxHP - state.playerHP));
-            try { return Math.floor(new Function('return ' + expr)()); } catch (e) { console.error("Math Error:", valStr, e); return 0; }
+            try { return Math.floor(new Function('return ' + expr)()); } catch (e) { return 0; }
         }
 
         function generateWave() {
@@ -175,7 +186,11 @@
             document.body.classList.remove('boss-mode');
             if(state.enemyWaveIdx < state.currentWave.length) {
                 const raw = state.currentWave[state.enemyWaveIdx];
-                state.currentEnemy = { ...raw, curHP: raw.hp, actionStep: 0, poison: 0, vulnerable: 0, weak: 0, stunned: false };
+                state.currentEnemy = { 
+                    ...raw, curHP: raw.hp, actionStep: 0, 
+                    poison: 0, vulnerable: 0, weak: 0, stunned: false,
+                    markers: [] // ★ 新增：敵人狀態陣列
+                };
                 state.enemyWaveIdx++;
                 const box = document.getElementById('enemy-target');
                 box.className = 'enemy-box tier-' + state.currentEnemy.type;
@@ -192,7 +207,12 @@
                 const el = document.createElement('div');
                 el.className = 'card';
                 let niceDesc = d.effect;
-                // 更新：支援顯示公式 (.*?)
+                // 更新視覺：標記與需求
+                niceDesc = niceDesc.replace(/\[#mark\s+(.*?)\]/g, '<span class="tag-badge bg-mark">$1</span>');
+                niceDesc = niceDesc.replace(/\[#req\s+(.*?)\]/g, '<span class="tag-badge bg-req">REQ: $1</span>');
+                niceDesc = niceDesc.replace(/\[#reqme\s+(.*?)\]/g, '<span class="tag-badge bg-req">NEED: $1</span>');
+                niceDesc = niceDesc.replace(/\[#unmark\s+(.*?)\]/g, '<span class="tag-badge bg-draw">CLR: $1</span>');
+                // 原本的標籤
                 niceDesc = niceDesc.replace(/\[#dmg\s+(.*?)\]/g, '<span class="tag-badge bg-dmg">DMG $1</span>');
                 niceDesc = niceDesc.replace(/\[#def\s+(.*?)\]/g, '<span class="tag-badge bg-def">DEF $1</span>');
                 niceDesc = niceDesc.replace(/\[#heal\s+(.*?)\]/g, '<span class="tag-badge bg-heal">HEAL $1</span>');
@@ -221,13 +241,35 @@
         }
 
         function select(el, d) {
+            // ★ 新增：條件檢查邏輯
+            // 1. 檢查敵人標記 [#req TAG]
+            const reqMatch = /\[#req\s+(.*?)\]/.exec(d.effect);
+            if (reqMatch) {
+                const reqTag = reqMatch[1].trim();
+                if (!state.currentEnemy.markers.includes(reqTag)) {
+                    showLog(`REQ: ${reqTag}`);
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    return cancel();
+                }
+            }
+            // 2. 檢查玩家標記 [#reqme TAG]
+            const reqMeMatch = /\[#reqme\s+(.*?)\]/.exec(d.effect);
+            if (reqMeMatch) {
+                const reqTag = reqMeMatch[1].trim();
+                if (!state.playerMarkers.includes(reqTag)) {
+                    showLog(`NEED: ${reqTag}`);
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    return cancel();
+                }
+            }
+
             if(state.selectedCard?.el === el) return cancel();
             cancel();
             state.selectedCard = {el, d};
             el.classList.add('selected');
-            const hasOffense = /\[#(dmg|psn|weak|vuln|stun|drain|pure)/.test(d.effect);
+            const hasOffense = /\[#(dmg|psn|weak|vuln|stun|drain|pure|mark|unmark|req)/.test(d.effect);
             if(hasOffense) document.getElementById('enemy-target').classList.add('target-active');
-            const hasSelf = /\[#(heal|def|eng|draw|sdmg|str|maxhp)/.test(d.effect);
+            const hasSelf = /\[#(heal|def|eng|draw|sdmg|str|maxhp|reqme)/.test(d.effect);
             if(hasSelf) document.getElementById('player-hub').classList.add('target-active');
         }
 
@@ -243,12 +285,33 @@
         function applyCardEffect(target) {
             const d = state.selectedCard.d;
             state.energy -= d.cost;
-            // 更新：抓取標籤內的任意內容
             const reg = /\[#(\w+)\s*(.*?)\]/g;
             let m;
             while((m = reg.exec(d.effect)) !== null) {
                 const tag = m[1];
-                const val = resolveVal(m[2]); // 更新：使用解析器
+                const rawVal = m[2]; // 保留原始字串供 mark 使用
+                const val = resolveVal(rawVal); // 嘗試解析為數字
+
+                // ★ 新增：標記處理
+                if(tag === 'mark') {
+                    const markerName = rawVal.trim();
+                    if(target === 'enemy') {
+                        if(!state.currentEnemy.markers.includes(markerName)) { state.currentEnemy.markers.push(markerName); showLog(`MARKED: ${markerName}`); }
+                    } else {
+                        if(!state.playerMarkers.includes(markerName)) { state.playerMarkers.push(markerName); showLog(`STATE: ${markerName}`); }
+                    }
+                }
+                if(tag === 'unmark') {
+                    const markerName = rawVal.trim();
+                    if(target === 'enemy') {
+                        const idx = state.currentEnemy.markers.indexOf(markerName);
+                        if(idx > -1) { state.currentEnemy.markers.splice(idx, 1); showLog(`CLEARED: ${markerName}`); }
+                    } else {
+                        const idx = state.playerMarkers.indexOf(markerName);
+                        if(idx > -1) { state.playerMarkers.splice(idx, 1); showLog(`CLEARED: ${markerName}`); }
+                    }
+                }
+
                 if(tag === 'dmg' && target === 'enemy') damageEnemy(val);
                 if(tag === 'pure' && target === 'enemy') { state.currentEnemy.curHP -= val; showLog(`PURE DMG: ${val}`); visualFlash('enemy-target', 'pure'); }
                 if(tag === 'drain' && target === 'enemy') { const actualDmg = damageEnemy(val); healPlayer(actualDmg); }
@@ -311,12 +374,12 @@
             const acts = state.currentEnemy.actions;
             if(!acts.length) return;
             const currentAct = acts[state.currentEnemy.actionStep % acts.length];
-            // 敵人行動目前維持僅支援純數字 (避免過於複雜)，如需升級也可比照辦理
             const reg = /\[#(\w+)\s*(-?\d+)?\]/g; 
             let m;
             while((m = reg.exec(currentAct)) !== null) {
                 const tag = m[1], val = parseInt(m[2])||0;
                 if(tag === 'dmg') playerTakeDamage(val);
+                // 擴充：敵人也可以給自己上狀態 (如果需要的話可以加在這邊)
             }
             state.currentEnemy.actionStep++;
         }
@@ -343,7 +406,14 @@
                 const enPct = (state.currentEnemy.curHP / state.currentEnemy.hp) * 100;
                 document.getElementById('ui-en-hp-fill').style.width = Math.max(0, enPct) + '%';
                 document.getElementById('ui-en-hp-text').innerText = `${state.currentEnemy.curHP} / ${state.currentEnemy.hp}`;
+                
                 const sBar = document.getElementById('en-status'); sBar.innerHTML = '';
+                // ★ 新增：顯示敵人文字標記
+                state.currentEnemy.markers.forEach(m => {
+                   const cls = 'marker-' + m.toLowerCase(); 
+                   sBar.innerHTML += `<div class="status-text ${cls}">${m}</div>`;
+                });
+                
                 const addIcon = (txt, cls) => sBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
                 if(state.currentEnemy.poison > 0) addIcon(`☠ ${state.currentEnemy.poison}`, 'st-poison');
                 if(state.currentEnemy.vulnerable > 0) addIcon(`💔 ${state.currentEnemy.vulnerable}`, 'st-vuln');
@@ -359,7 +429,14 @@
             document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, (state.playerHP/state.playerMaxHP)*100) + '%';
             const sFill = document.getElementById('ui-pl-shield-fill');
             sFill.style.width = state.playerShield > 0 ? Math.min(100, (state.playerShield/state.playerMaxHP)*100) + '%' : '0%';
+            
             const pBar = document.getElementById('pl-status'); pBar.innerHTML = '';
+            // ★ 新增：顯示玩家文字標記
+            state.playerMarkers.forEach(m => {
+                const cls = 'marker-' + m.toLowerCase(); 
+                pBar.innerHTML += `<div class="status-text ${cls}">${m}</div>`;
+            });
+
             const addPIcon = (txt, cls) => pBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
             if(state.playerShield > 0) addPIcon(`🛡 ${state.playerShield}`, 'st-shield');
             if(state.playerStr > 0) addPIcon(`💪 ${state.playerStr}`, 'st-str');

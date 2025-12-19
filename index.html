@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v9.4 - Layout Fix</title>
+    <title>Steampunk Duelist v10.0 - Reborn UI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -11,611 +11,617 @@
             --brass: #b5a642; --bronze: #cd7f32; --gold: #ffd700;
             --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
             --danger: #ff4444; --success: #44ff44; --shield: #00aaff; --poison: #bf00ff;
-            --str: #ff9900; --vuln: #ff0055; --weak: #88cc00;
             --boss-purple: #b300ff; --boss-red-bg: #3a0000;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             margin: 0; padding: 0; background: #120f0d;
             color: var(--parchment); font-family: 'IM Fell English SC', serif;
-            overflow: hidden; height: 100vh; user-select: none;
+            overflow: hidden; height: 100vh; width: 100vw; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
             transition: background-image 1.5s ease-in-out; touch-action: manipulation;
+            display: flex; flex-direction: column; /* 改為 Flex 佈局 */
         }
 
         body.boss-mode { background-image: radial-gradient(circle, #7a0000 0%, var(--boss-red-bg) 100%) !important; }
 
-        /* 跑馬燈 */
+        /* --- 1. 頂層資訊區 (Top Bar) --- */
+        #top-bar {
+            width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; z-index: 100; pointer-events: none;
+        }
+        
+        /* 跑馬燈 (絕對定位在最頂) */
         #marquee-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 35px;
-            background: var(--danger); border-bottom: 3px double var(--gold);
-            color: #fff; overflow: hidden; z-index: 9999;
-            display: none; box-shadow: 0 0 20px var(--danger);
+            position: absolute; top: 0; left: 0; width: 100%; height: 30px;
+            background: var(--danger); border-bottom: 2px solid var(--gold);
+            color: #fff; overflow: hidden; z-index: 200; display: none;
         }
         body.boss-mode #marquee-container { display: block; }
         .marquee-content { display: flex; width: fit-content; animation: marquee-scroll 10s linear infinite; }
-        .marquee-content span { white-space: nowrap; font-family: 'Rye', cursive; font-size: 1.3rem; line-height: 35px; padding-right: 50px; text-shadow: 2px 2px 4px #000; }
+        .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* --- 遮罩層 --- */
-        .overlay-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 10000;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-        
-        #pile-viewer-content {
-            display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
-            max-width: 90%; max-height: 80vh; overflow-y: auto; padding: 20px;
-        }
-        .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; }
-        .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
-
-        /* 過場畫面 */
-        .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
-        .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
-        #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
-        .reward-btn {
-            width: 220px; height: 280px; background: #222; border: 4px double var(--bronze); border-radius: 10px;
+        /* 左上角儀表板 */
+        .dashboard-group { display: flex; gap: 15px; margin-top: 10px; pointer-events: auto; }
+        .gauge-circle {
+            width: 70px; height: 70px; border: 3px solid var(--brass); border-radius: 50%;
+            background: radial-gradient(circle, var(--leather), #111);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; transition: 0.3s; padding: 15px; text-align: center; color: var(--parchment);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         }
-        .reward-btn:hover { transform: translateY(-10px); border-color: var(--steam-blue); box-shadow: 0 0 20px var(--steam-blue); background: #2a2a2a; }
-        .reward-icon { font-size: 4rem; margin-bottom: 20px; }
-        .reward-name { font-family: 'Rye'; font-size: 1.5rem; margin-bottom: 10px; color: var(--gold); }
-        .reward-desc { font-size: 0.9rem; color: #aaa; }
-        .warning-text { color: var(--danger); font-size: 0.9rem; margin-top: 20px; border: 1px solid var(--danger); padding: 5px 15px; border-radius: 5px; background: rgba(255, 0, 0, 0.1); }
-        #next-lvl-btn {
-            padding: 15px 50px; font-size: 2rem; font-family: 'Rye'; background: var(--steam-blue); color: #000; 
-            border: 5px solid #fff; border-radius: 10px; cursor: pointer; box-shadow: 0 0 30px var(--steam-blue);
-            animation: pulse-btn 1s infinite alternate; display: none; margin-top: 30px;
-        }
-        @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
+        .gauge-label { font-size: 0.6rem; color: #888; }
+        .gauge-val { font-family: 'Rye'; font-size: 1.5rem; color: var(--steam-blue); }
 
-        /* --- 戰鬥佈局 (位置調整) --- */
-        /* ★ 修改：top 從 60px 改為 100px，避開跑馬燈 */
-        #battle-stage { 
-            position: absolute; top: 100px; left: 50%; transform: translateX(-50%); 
-            display: flex; align-items: center; gap: 30px; transition: 0.3s; z-index: 5; 
+        /* 右上角回合數 */
+        .round-box {
+            width: 60px; height: 70px; background: var(--leather); border: 3px double var(--brass);
+            border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            margin-top: 10px;
         }
-        .round-gauge { width: 80px; height: 100px; background: var(--leather); border: 3px double var(--brass); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        
-        .enemy-box { 
-            width: 360px; background: #222; border: 6px ridge var(--bronze); 
-            padding: 20px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; 
+
+        /* --- 2. 中層戰鬥區 (Battle Area) --- */
+        #battle-area {
+            flex: 1; /* 佔據剩餘空間 */
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            padding-top: 40px; gap: 20px; position: relative; width: 100%;
+        }
+
+        /* 敵人區塊 */
+        .enemy-box {
+            width: 400px; max-width: 90%; 
+            background: #222; border: 6px ridge var(--bronze);
+            padding: 15px 20px; border-radius: 8px; position: relative; cursor: pointer; transition: 0.3s;
+            display: flex; flex-direction: column; gap: 5px;
         }
         .enemy-box.stunned { filter: grayscale(100%) brightness(0.7); border-color: #555 !important; }
-        .tier-1 { border-color: #cd7f32 !important; } .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); } .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
-        .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple); animation: boss-pulse 1.5s infinite alternate ease-in-out; }
-        @keyframes boss-pulse { from { box-shadow: 0 0 30px var(--boss-purple), inset 0 0 10px var(--boss-purple); } to { box-shadow: 0 0 60px var(--boss-purple), inset 0 0 25px var(--boss-purple); filter: brightness(1.1); } }
-        
+        .tier-1 { border-color: #cd7f32 !important; }
+        .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
+        .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
+        .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 40px var(--boss-purple); animation: boss-pulse 1.5s infinite alternate; }
+        @keyframes boss-pulse { from { box-shadow: 0 0 20px var(--boss-purple); } to { box-shadow: 0 0 50px var(--boss-purple); } }
+
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
-        .status-bar { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; height: 24px; }
-        .status-icon, .status-text { display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-family: sans-serif; font-size: 0.8rem; box-shadow: 1px 1px 2px #000; color: #fff; border: 1px solid rgba(255,255,255,0.3); margin-right: 2px;}
-        .status-text { background: #444; font-family: 'IM Fell English SC', serif; }
-        .st-poison { background: var(--poison); } .st-shield { background: var(--shield); } .st-str { background: var(--str); } .st-vuln { background: var(--vuln); } .st-weak { background: var(--weak); color: #000; } .st-stun { background: #555; border: 1px dashed #fff; }
-        .marker-lockon { background: #ff0055; border-color: #ffaaaa; } .marker-stance { background: #00aaff; border-color: #aaffff; }
 
-        .hp-container { 
-            width: 100%; height: 22px; background: #000; border-radius: 11px; 
-            border: 2px solid var(--brass); overflow: hidden; 
-            margin: 20px 0 5px 0; 
-            position: relative; 
+        /* 玩家區塊 (獨立出來) */
+        #player-box {
+            width: 400px; max-width: 90%;
+            padding: 10px; border-radius: 10px; transition: 0.2s; cursor: pointer;
+            background: rgba(0,0,0,0.3); border: 1px solid transparent;
         }
-        .hp-fill { height: 100%; width: 100%; transition: 0.4s; position: absolute; left: 0; top: 0; }
-        .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2;}
+        #player-box:hover { background: rgba(255,255,255,0.05); }
 
-        #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; transition: 0.3s; z-index: 10; }
-        .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
-        #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; z-index: 10; }
-        #action-log { position: absolute; top: 120px; width: 100%; text-align: center; color: #fff; font-family: 'Rye'; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 500; font-size: 1.5rem; transition: 0.3s; }
-        #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; z-index: 50; }
-        #end-btn:hover { background: #b87333; transform: translateY(-50%) scale(1.05); }
-
-        /* 牌堆顯示 (下移到 10px) */
-        #pile-display { position: absolute; bottom: 10px; left: 20px; display: flex; gap: 15px; z-index: 50; }
-        .pile-box { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; cursor: pointer; transition: 0.2s; }
-        .pile-box:hover { background: #333; border-color: #fff; }
-        .pile-label { font-size: 0.6rem; color: #888; margin-bottom: 5px; } .pile-count { font-family: 'Rye'; font-size: 1.5rem; color: #fff; }
-        #hand-counter { position: absolute; bottom: 10px; right: 20px; font-family: 'Rye', serif; font-size: 2rem; color: var(--parchment); text-shadow: 2px 2px 0 #000; z-index: 100; pointer-events: none; }
-
-        /* --- 卡牌區域 (下移) --- */
-        /* ★ 修改：bottom 從 20px 改為 0px */
-        #hand-area { 
-            position: absolute; bottom: 0px; left: 50%; transform: translateX(-50%); 
-            width: 90%; height: 220px; display: flex; justify-content: center; align-items: flex-end; 
-            perspective: 1000px; pointer-events: none; transition: 0.3s; z-index: 20; 
+        /* 通用血條樣式 */
+        .hp-bar-frame {
+            width: 100%; height: 20px; background: #111; border: 2px solid var(--brass);
+            border-radius: 10px; overflow: hidden; position: relative; margin-top: 5px;
         }
+        .hp-fill { height: 100%; width: 100%; position: absolute; left: 0; top: 0; transition: 0.4s; }
+        .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2; }
         
+        .status-row { display: flex; gap: 4px; flex-wrap: wrap; min-height: 20px; }
+        .status-tag { 
+            padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: #fff; 
+            border: 1px solid rgba(255,255,255,0.3); background: #444; 
+            display: inline-flex; align-items: center; 
+        }
+
+        /* --- 3. 底層操作區 (Action Area) --- */
+        #action-area {
+            height: 240px; width: 100%; position: relative;
+            display: flex; justify-content: center; align-items: flex-end;
+            padding-bottom: 10px;
+        }
+
+        /* 手牌容器 */
+        #hand-container {
+            width: 100%; height: 100%; display: flex; justify-content: center; align-items: flex-end;
+            perspective: 1000px; padding-bottom: 20px; overflow: visible;
+        }
+
         .card { 
             width: 130px; height: 190px; background: var(--parchment); color: #2a1a0a; 
-            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -12px; 
-            cursor: pointer; position: relative; transition: 0.25s; 
+            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -15px; 
+            cursor: pointer; position: relative; transition: 0.25s; flex-shrink: 0;
             background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
-            pointer-events: auto; box-shadow: -5px 5px 15px rgba(0,0,0,0.5); flex-shrink: 0; 
+            box-shadow: -5px 5px 15px rgba(0,0,0,0.5); transform-origin: center bottom;
         }
-        .card:hover { transform: translateY(-40px) rotate(0deg) !important; z-index: 100; margin: 0 5px; }
-        .card.selected { transform: translateY(-80px) scale(1.1) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
-        .card-cost { position: absolute; top: -12px; left: -12px; width: 32px; height: 32px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem; z-index: 2; }
-        .card-name { padding:10px 2px; text-align:center; font-family:'Rye'; font-size:0.9rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
-        .card-desc { margin-top: 15px; text-align: center; font-size: 0.75rem; color: #421; padding: 0 8px; line-height: 1.3; font-weight: bold;}
-        .card-row-id { position: absolute; bottom: 4px; left: 6px; font-size: 0.6rem; color: #888; font-family: sans-serif; opacity: 0.7; }
+        .card:hover { transform: translateY(-50px) scale(1.1) !important; z-index: 100; margin: 0 5px; }
+        .card.selected { transform: translateY(-80px) scale(1.15) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
+        
+        .card-header { display: flex; justify-content: space-between; padding: 5px; }
+        .card-cost { width: 28px; height: 28px; border-radius: 50%; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-weight: bold; }
+        .card-id { font-size: 0.6rem; color: #666; align-self: center; }
+        .card-name { text-align: center; font-family: 'Rye'; font-size: 0.85rem; font-weight: bold; border-bottom: 1px solid #aaa; padding-bottom: 2px; margin: 0 5px; }
+        .card-body { padding: 10px 5px; text-align: center; font-size: 0.7rem; color: #332; line-height: 1.25; font-weight: bold; }
+        
+        .tag { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.65rem; margin: 1px; color: #fff; }
+        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } 
+        .bg-misc { background: #555; } .bg-req { background: #000; border: 1px solid #f00; color: #f00; }
 
-        .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.7rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
-        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; } .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; } .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; } .bg-once { background: #333; color: #aaa; border: 1px solid #aaa; }
+        /* 左下角牌堆 */
+        #piles-ui {
+            position: absolute; left: 20px; bottom: 20px; display: flex; gap: 10px; z-index: 50;
+        }
+        .pile-btn {
+            width: 50px; height: 70px; background: #222; border: 2px solid var(--brass); border-radius: 5px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 2px 2px 5px #000;
+        }
+        .pile-btn:hover { border-color: #fff; }
+        .pile-lbl { font-size: 0.6rem; color: #888; }
+        .pile-num { font-family: 'Rye'; font-size: 1.2rem; color: #fff; }
 
-        /* 平板修正 */
-        @media (min-width: 769px) and (max-width: 1366px) {
-            #battle-stage { top: 90px; transform: translateX(-50%) scale(0.9); }
-            #player-hub { bottom: 240px; width: 400px; }
-            #side-panel { left: 10px; transform: translateY(-50%) scale(0.85); transform-origin: left center; }
-            #end-btn { width: 90px; height: 90px; right: 20px; font-size: 0.9rem; }
-            .victory-title { font-size: 3rem; }
+        /* 右下角控制 */
+        #controls-ui {
+            position: absolute; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 50;
+        }
+        #hand-count { font-family: 'Rye'; font-size: 1.5rem; color: #888; text-shadow: 1px 1px 0 #000; }
+        #end-btn {
+            width: 90px; height: 90px; border-radius: 50%; background: var(--bronze);
+            border: 5px double var(--brass); color: #fff; font-family: 'Rye'; font-size: 1.2rem;
+            cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s;
+        }
+        #end-btn:hover { transform: scale(1.05); background: #c57d3e; }
+
+        /* 浮動訊息 */
+        #action-log { position: absolute; top: 40%; width: 100%; text-align: center; font-family: 'Rye'; font-size: 2rem; color: #fff; text-shadow: 0 0 10px #000; pointer-events: none; z-index: 500; transition: 0.3s; opacity: 0; }
+
+        /* --- 遮罩與過場 --- */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .victory-title { font-family: 'Rye'; font-size: 3rem; color: var(--gold); margin-bottom: 20px; }
+        .reward-container { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        .reward-card { width: 180px; height: 240px; background: #222; border: 2px solid var(--bronze); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #eee; padding: 10px; text-align: center; }
+        .reward-card:hover { border-color: var(--steam-blue); background: #333; }
+        .reward-icon { font-size: 3rem; margin-bottom: 10px; }
+        #viewer-grid { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 90%; max-height: 70vh; overflow-y: auto; padding: 20px; }
+
+        /* --- 📱 RWD 響應式調整 --- */
+        
+        /* 1. 平板與寬螢幕手機 (橫向) */
+        @media (max-width: 1024px) {
+            .enemy-box { width: 320px; padding: 10px; }
+            #player-box { width: 320px; }
+            .card { width: 110px; height: 160px; }
+            #end-btn { width: 80px; height: 80px; font-size: 1rem; }
         }
 
-        /* 手機修正 */
-        @media (max-width: 768px) {
-            body { background-position: center; background-size: cover; }
-            .marquee-content span { font-size: 1rem; line-height: 35px; }
+        /* 2. 手機 (直向) - 徹底重排 */
+        @media (max-width: 600px) {
+            /* 壓縮儀表板 */
+            .dashboard-group { gap: 8px; margin-left: 5px; }
+            .gauge-circle { width: 50px; height: 50px; border-width: 2px; }
+            .gauge-val { font-size: 1rem; }
+            .round-box { width: 45px; height: 55px; margin-right: 5px; }
+
+            /* 戰鬥區緊湊排列 */
+            #battle-area { padding-top: 50px; gap: 10px; justify-content: center; }
             
-            /* ★ 修改：手機版 top 改為 85px */
-            #battle-stage { top: 85px; width: 100%; flex-direction: column; gap: 5px; }
+            .enemy-box { width: 90%; padding: 10px; }
+            .enemy-name { font-size: 1.5rem; }
             
-            .round-gauge { width: 50px; height: 60px; position: absolute; top: 0; right: 10px; z-index: 10; border-width: 2px; }
-            .round-gauge span:first-child { font-size: 0.5rem; } .round-gauge span:last-child { font-size: 1.2rem !important; }
-            .enemy-box { width: 85%; padding: 10px 15px; margin-top: 15px; } #ui-en-name { font-size: 1.3rem !important; }
-            #side-panel { top: 50px; left: 10px; flex-direction: row; gap: 10px; scale: 0.7; transform-origin: top left; z-index: 20; }
-            #player-hub { width: 90%; bottom: 250px; padding: 5px; }
-            #hand-area { height: 180px; bottom: 0; width: 100%; perspective: 500px; overflow-x: auto; justify-content: center; align-items: flex-end; padding-bottom: 5px; }
-            .card { width: 100px; height: 150px; margin: 0 -18px; }
-            .card-name { font-size: 0.7rem; padding: 8px 2px; } .card-desc { font-size: 0.6rem; margin-top: 8px; }
-            .card-cost { width: 25px; height: 25px; font-size: 0.9rem; top: -8px; left: -8px; } .card.selected { transform: translateY(-50px) scale(1.1) !important; }
-            #end-btn { width: 70px; height: 70px; right: 10px; top: auto; bottom: 240px; transform: none; font-size: 0.8rem; border-width: 3px; z-index: 50; }
-            #action-log { font-size: 1.2rem; top: 35%; }
-            #hand-counter { bottom: 200px; right: 10px; font-size: 1.2rem; }
-            #pile-display { bottom: 200px; left: 10px; transform: scale(0.8); transform-origin: bottom left; }
-            .victory-title { font-size: 2.5rem; }
-            #reward-options { flex-direction: column; gap: 10px; }
-            .reward-btn { width: 100%; height: 80px; flex-direction: row; padding: 10px; gap: 20px; justify-content: flex-start; }
-            .reward-icon { font-size: 2rem; margin: 0; } .reward-name { font-size: 1.2rem; margin: 0; } .reward-desc { display: none; }
+            #player-box { width: 90%; margin-top: 5px; }
+            
+            /* 手牌區縮小 */
+            #action-area { height: 180px; }
+            .card { width: 90px; height: 130px; margin: 0 -10px; }
+            .card-name { font-size: 0.6rem; padding: 5px 0; }
+            .card-desc { font-size: 0.5rem; margin-top: 5px; padding: 0 2px; }
+            .card-cost { width: 22px; height: 22px; font-size: 0.9rem; top: -8px; left: -8px; }
+
+            /* 按鈕與計數 */
+            #end-btn { width: 65px; height: 65px; font-size: 0.8rem; }
+            #piles-ui { bottom: 120px; left: 10px; flex-direction: column; gap: 5px; } /* 牌堆移到左側上方一點 */
+            .pile-btn { width: 40px; height: 50px; }
+            #hand-counter { bottom: 85px; right: 15px; font-size: 1rem; } /* 計數移到按鈕上方 */
+            
+            .reward-card { width: 140px; height: 180px; }
         }
     </style>
 </head>
 <body onload="init()">
-    <div id="marquee-container"><div class="marquee-content"><span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div></div>
+
+    <div id="marquee-container"><div class="marquee-content"><span>⚠ WARNING: BOSS APPROACHING ⚠</span><span>⚠ WARNING: BOSS APPROACHING ⚠</span></div></div>
     
-    <div id="victory-screen" class="overlay-screen">
-        <div class="victory-title">WAVE COMPLETE</div>
-        <div class="victory-subtitle">CHOOSE YOUR REWARD</div>
-        <div id="reward-options">
-            <div class="reward-btn" onclick="showRemoveCardUI()">
-                <div class="reward-icon">🔥</div>
-                <div class="reward-name">PURGE</div>
-                <div class="reward-desc">Remove 1 card from your deck.</div>
-            </div>
-            <div class="reward-btn" onclick="showAddCardUI()">
-                <div class="reward-icon">🃏</div>
-                <div class="reward-name">DRAFT</div>
-                <div class="reward-desc">Add 1 of 3 new cards.</div>
-            </div>
-            <div class="reward-btn" onclick="chooseHeal()">
-                <div class="reward-icon">❤</div>
-                <div class="reward-name">REST</div>
-                <div class="reward-desc">Recover 15% Max HP.</div>
-            </div>
+    <div id="top-bar">
+        <div class="dashboard-group">
+            <div class="gauge-circle"><span class="gauge-label">ENERGY</span><span id="ui-eng" class="gauge-val">3/3</span></div>
+            <div class="gauge-circle"><span class="gauge-label">WAVE</span><span id="ui-wave" class="gauge-val">1</span></div>
         </div>
-        <div class="warning-text">⚠ SELECTION CANNOT BE CANCELLED. CHOOSE CAREFULLY. ⚠</div>
-        <button id="next-lvl-btn" onclick="goToNextLevel()">NEXT BATTLE ➡</button>
+        <div class="round-box"><span style="font-size:0.5rem">ROUND</span><span id="ui-round" style="font-family:'Rye';font-size:1.2rem;color:var(--gold)">1</span></div>
     </div>
 
-    <div id="card-selection-overlay" class="overlay-screen" onclick="closePileViewer(event)">
-        <div class="viewer-title" id="selection-title-text">SELECT A CARD</div>
-        <div id="pile-viewer-content"></div>
-        <div class="close-tip">(Click background to close view)</div>
-    </div>
-
-    <div id="action-log"></div>
-    <div id="battle-stage">
-        <div class="round-gauge"><span style="font-size:0.7rem">ROUND</span><span id="ui-round" style="font-family:'Rye'; font-size:2.2rem; color:var(--gold)">1</span></div>
+    <div id="battle-area">
         <div class="enemy-box tier-1" id="enemy-target">
-            <div id="ui-en-row" style="font-size:0.7rem; color: #888;">#--</div>
-            <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem;">LOADING...</div>
-            <div id="en-status" class="status-bar"></div>
-            <div class="hp-container"><div id="ui-en-hp-fill" class="hp-fill" style="background: var(--danger);"></div></div>
-            <div id="ui-en-hp-text" style="text-align:right; font-weight:bold; font-size: 0.9rem;">-- / --</div>
-            <div id="ui-en-intent" style="color:var(--steam-blue); font-size:0.8rem; margin-top:5px; height:1rem;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem; line-height:1;">LOADING</div>
+                <div id="ui-en-intent" style="color:var(--steam-blue); font-size:0.8rem;"></div>
+            </div>
+            <div id="en-status" class="status-row"></div>
+            <div class="hp-bar-frame">
+                <div id="ui-en-hp-fill" class="hp-fill" style="background:var(--danger);"></div>
+            </div>
+            <div id="ui-en-hp-text" style="text-align:right; font-size:0.8rem; color:#888;">-- / --</div>
+        </div>
+
+        <div id="player-box">
+            <div style="display:flex; justify-content:space-between;">
+                <span style="font-family:'Rye'; color:#aaa;">PLAYER CORE</span>
+                <span id="ui-pl-hp-text" style="font-size:0.9rem;">100 / 100</span>
+            </div>
+            <div id="pl-status" class="status-row"></div>
+            <div class="hp-bar-frame">
+                <div id="ui-pl-hp-fill" class="hp-fill" style="background:var(--success);"></div>
+                <div id="ui-pl-shield-fill" class="shield-fill"></div>
+            </div>
+        </div>
+        
+        <div id="action-log"></div>
+    </div>
+
+    <div id="action-area">
+        <div id="piles-ui">
+            <div class="pile-btn" onclick="showPile('DRAW PILE', state.drawPile)">
+                <span class="pile-lbl">DRAW</span><span id="ui-draw-n" class="pile-num">0</span>
+            </div>
+            <div class="pile-btn" onclick="showPile('DISCARD', state.discardPile)">
+                <span class="pile-lbl">DISC</span><span id="ui-disc-n" class="pile-num">0</span>
+            </div>
+        </div>
+
+        <div id="hand-container"></div>
+
+        <div id="controls-ui">
+            <div id="hand-counter">0/5</div>
+            <button id="end-btn">END</button>
         </div>
     </div>
-    <div id="side-panel">
-        <div class="gauge-circle"><span style="font-size:0.7rem">ENERGY</span><span id="ui-energy" style="font-family:'Rye'; font-size:2rem; color:var(--steam-blue)">3/3</span></div>
-        <div class="gauge-circle"><span style="font-size:0.7rem">WAVE</span><span id="ui-wave-left" style="font-family:'Rye'; font-size:2rem">--</span></div>
+
+    <div id="overlay-screen" class="overlay" onclick="closeOverlay(event)">
+        <div class="victory-title" id="overlay-title">TITLE</div>
+        <div id="viewer-grid"></div>
+        <div id="reward-container" class="reward-container"></div>
+        <div style="color:#888; margin-top:20px; font-size:0.8rem;" id="overlay-tip">(Click background to close)</div>
     </div>
-    <div id="player-hub">
-        <div style="display:flex; justify-content:space-between; margin-bottom: 5px;"><span>PLAYER_CORE</span><span id="ui-pl-hp-text">100 / 100</span></div>
-        <div id="pl-status" class="status-bar" style="margin-bottom:5px;"></div>
-        <div class="hp-container"><div id="ui-pl-hp-fill" class="hp-fill" style="background: var(--success);"></div><div id="ui-pl-shield-fill" class="shield-fill"></div></div>
-    </div>
-    
-    <div id="pile-display">
-        <div class="pile-box" onclick="showPile('DRAW PILE', state.drawPile)">
-            <span class="pile-label">DRAW</span>
-            <span id="ui-draw-count" class="pile-count">--</span>
-        </div>
-        <div class="pile-box" onclick="showPile('DISCARD PILE', state.discardPile)">
-            <span class="pile-label">DISC</span>
-            <span id="ui-disc-count" class="pile-count">--</span>
-        </div>
-    </div>
-    <div id="hand-counter">0/5</div>
-    
-    <button id="end-btn">END<br>TURN</button>
-    <div id="hand-area"></div>
 
     <script>
         const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
         const GID_CARD = "0"; const GID_ENEMY = "322780304"; const GID_CONFIG = "1319509950";
 
         let state = {
-            playerHP: 100, playerMaxHP: 100, playerShield: 0, playerStr: 0,
-            playerMarkers: [],
-            energy: 3, maxEnergy: 3, maxHandSize: 5,
-            round: 1,
-            masterLibrary: [],
-            deck: [],
-            drawPile: [], discardPile: [], currentHand: [],
-            enemyPool: [], waveConfig: [],
-            currentWave: [], currentEnemy: null, enemyWaveIdx: 0, selectedCard: null,
-            isRewardMode: false 
+            pHP: 100, pMaxHP: 100, pShd: 0, pStr: 0, pMarks: [],
+            eng: 3, maxEng: 3, maxHand: 5, round: 1,
+            lib: [], deck: [], draw: [], disc: [], hand: [],
+            enPool: [], waves: [], curWave: [], curEn: null, wIdx: 0,
+            sel: null, mode: 'battle' // battle, reward, view
         };
 
+        // --- Init ---
         async function init() {
-            Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (res) => {
-                state.masterLibrary = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], effect: r[1], cost: parseInt(r[2])||0, row: i+2 }));
+            Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (r) => {
+                state.lib = r.data.slice(1).filter(d=>d[0]).map((d,i)=>({name:d[0], eff:d[1], cost:parseInt(d[2])||0, id:i+2}));
                 state.deck = [];
-                const starters = state.masterLibrary.slice(0, 5); 
-                starters.forEach(c => { state.deck.push({...c}); state.deck.push({...c}); });
-                startBattle();
+                state.lib.slice(0,5).forEach(c=>{ state.deck.push({...c}); state.deck.push({...c}); });
+                initBattle();
             }});
-            Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (res) => {
-                state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], hp: parseInt(r[1])||10, type: parseInt(r[2])||1, actions: [r[4], r[5], r[6], r[7], r[8], r[9]].filter(a => a && a.trim() !== ""), row: i+2 }));
-                Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: false, complete: (res) => {
-                    state.waveConfig = res.data.slice(1).map(r => ({ n: parseInt(r[0])||0, e: parseInt(r[1])||0, b: parseInt(r[2])||0, z: parseInt(r[3])||0 }));
-                    generateWave();
+            Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (r) => {
+                state.enPool = r.data.slice(1).filter(d=>d[0]).map((d,i)=>({name:d[0], hp:parseInt(d[1])||10, type:parseInt(d[2])||1, acts:[d[4],d[5],d[6],d[7],d[8],d[9]].filter(a=>a&&a.trim())}));
+                Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: false, complete: (r) => {
+                    state.waves = r.data.slice(1).map(d=>({n:parseInt(d[0])||0, e:parseInt(d[1])||0, b:parseInt(d[2])||0, z:parseInt(d[3])||0}));
+                    genWave();
                 }});
             }});
         }
 
-        function startBattle() {
-            state.drawPile = [...state.deck]; state.discardPile = []; state.currentHand = [];
-            shuffle(state.drawPile); draw(5);
+        function initBattle() {
+            state.draw = [...state.deck]; state.disc = []; state.hand = [];
+            shuffle(state.draw); drawCard(5);
+        }
+        function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} }
+
+        // --- Core Logic ---
+        function genWave() {
+            const cfg = state.waves[state.round-1];
+            if(!cfg) return alert("VICTORY!");
+            let w = [];
+            const add = (t,n) => { const p=state.enPool.filter(e=>e.type===t); for(let i=0;i<n;i++) if(p.length) w.push({...p[Math.floor(Math.random()*p.length)]}); };
+            add(1,cfg.n); add(2,cfg.e); add(3,cfg.b); add(4,cfg.z);
+            state.curWave = w; state.wIdx = 0; nextEn();
         }
 
-        function shuffle(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
+        function nextEn() {
+            document.body.classList.remove('boss-mode');
+            if(state.wIdx >= state.curWave.length) return showReward();
+            const raw = state.curWave[state.wIdx];
+            state.curEn = { ...raw, curHP: raw.hp, step:0, psn:0, vuln:0, weak:0, stun:false, marks:[] };
+            state.wIdx++;
+            if(state.curEn.type===4) { document.body.classList.add('boss-mode'); log("BOSS WARNING"); }
+            document.getElementById('enemy-target').className = 'enemy-box tier-'+state.curEn.type;
+            update();
+        }
+
+        function drawCard(n) {
+            const can = state.maxHand - state.hand.length;
+            let cnt = Math.min(n, can);
+            if(cnt<=0 && n>0) log("HAND FULL");
+            for(let i=0; i<cnt; i++) {
+                if(!state.draw.length) {
+                    if(!state.disc.length) break;
+                    state.draw=[...state.disc]; state.disc=[]; shuffle(state.draw); log("SHUFFLE");
+                }
+                state.hand.push(state.draw.pop());
             }
+            renderHand(); update();
         }
 
-        function showPile(title, pileArray) {
-            if(state.isRewardMode) return;
-            const overlay = document.getElementById('card-selection-overlay');
-            const content = document.getElementById('pile-viewer-content');
-            document.getElementById('selection-title-text').innerText = title;
-            document.querySelector('.close-tip').style.display = 'block'; 
-            content.innerHTML = '';
-            const sortedCards = [...pileArray].sort((a, b) => a.row - b.row);
-            sortedCards.forEach(card => {
-                const el = createCardElement(card);
-                el.style.pointerEvents = 'none'; el.style.transform = 'scale(0.8)'; el.style.position = 'relative'; el.style.margin = '0';
-                content.appendChild(el);
-            });
-            overlay.style.display = 'flex';
-        }
-
-        function closePileViewer(e) {
-            if (e.target.id === 'card-selection-overlay' && !state.isRewardMode) {
-                document.getElementById('card-selection-overlay').style.display = 'none';
+        function playCard(c, idx) {
+            state.eng -= c.cost;
+            
+            // 解析效果
+            const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
+            while((m=reg.exec(c.eff))!==null) {
+                const t=m[1], vRaw=m[2], val=calc(vRaw);
+                if(t==='dmg') dmgEn(val);
+                if(t==='def') { state.pShd+=val; log(`SHIELD ${val}`); }
+                if(t==='heal') { state.pHP=Math.min(state.pMaxHP, state.pHP+val); log(`HEAL ${val}`); }
+                if(t==='eng') { state.eng+=val; log(`ENG +${val}`); }
+                if(t==='draw') { drawCard(val); log(`DRAW ${val}`); }
+                if(t==='hand_limit') { state.maxHand=Math.max(0,state.maxHand+val); log(`HAND MAX ${val>0?'+':''}${val}`); }
+                if(t==='mark') { const n=vRaw.trim(); if(state.sel.target==='en'){ state.curEn.marks.push(n); }else{ state.pMarks.push(n); } log(`MARK: ${n}`); }
+                if(t==='unmark') { const n=vRaw.trim(); const arr=state.sel.target==='en'?state.curEn.marks:state.pMarks; const i=arr.indexOf(n); if(i>-1) arr.splice(i,1); }
+                if(t==='psn') { state.curEn.psn+=val; log(`POISON ${val}`); }
+                if(t==='vuln') { state.curEn.vuln+=val; log(`VULN ${val}`); }
+                if(t==='weak') { state.curEn.weak+=val; log(`WEAK ${val}`); }
+                if(t==='stun') { state.curEn.stun=true; log("STUNNED"); }
+                if(t==='sdmg') { state.pHP-=val; log(`HURT ${val}`); }
+                if(t==='str') { state.pStr+=val; log(`STR ${val}`); }
+                if(t==='drain') { const d=dmgEn(val); state.pHP=Math.min(state.pMaxHP, state.pHP+d); log(`DRAIN ${d}`); }
+                if(t==='pure') { state.curEn.curHP-=val; log(`PURE ${val}`); visualFlash('enemy-target','pure'); }
+                if(t==='maxhp') { state.pMaxHP+=val; state.pHP+=val; log(`MAXHP +${val}`); }
             }
+
+            state.hand.splice(idx, 1);
+            if(c.eff.includes('[#once]')) log("BANISHED");
+            else state.disc.push(c);
+            
+            cancelSel(); checkWin(); update(); renderHand();
         }
 
-        function chooseHeal() {
-            const healAmt = Math.floor(state.playerMaxHP * 0.15);
-            state.playerHP = Math.min(state.playerMaxHP, state.playerHP + healAmt);
-            alert(`Recovered ${healAmt} HP!`); onRewardChosen();
+        function calc(s) {
+            if(!s || !s.trim()) return 1; if(!isNaN(s)) return parseFloat(s);
+            const e=state.curEn; const h=state.hand.length; 
+            let x = s.toLowerCase()
+                .replace(/{hp}/g,state.pHP).replace(/{mhp}/g,state.pMaxHP).replace(/{shd}/g,state.pShd)
+                .replace(/{str}/g,state.pStr).replace(/{eng}/g,state.eng).replace(/{hand}/g,h)
+                .replace(/{draw_pile}/g,state.draw.length).replace(/{disc_pile}/g,state.disc.length)
+                .replace(/{en_hp}/g,e?e.curHP:0).replace(/{en_mhp}/g,e?e.hp:0)
+                .replace(/{en_psn}/g,e?e.psn:0).replace(/{en_vuln}/g,e?e.vuln:0);
+            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
         }
 
-        function showRemoveCardUI() {
-            state.isRewardMode = true; 
-            const overlay = document.getElementById('card-selection-overlay');
-            const content = document.getElementById('pile-viewer-content');
-            document.getElementById('selection-title-text').innerText = "REMOVE A CARD";
-            document.querySelector('.close-tip').style.display = 'none'; 
-            content.innerHTML = '';
-            overlay.style.display = 'flex';
-            state.deck.forEach((card, index) => {
-                const el = createCardElement(card);
-                el.style.position = 'relative'; el.style.margin = '0'; el.style.transform = 'scale(0.9)';
+        function dmgEn(v) {
+            let d = v + state.pStr; if(state.curEn.vuln>0) d=Math.floor(d*1.5);
+            state.curEn.curHP-=d; log(`HIT ${d}`); visualFlash('enemy-target','dmg'); return d;
+        }
+
+        function checkWin() { if(state.curEn && state.curEn.curHP<=0) nextEn(); }
+
+        // --- Interaction ---
+        function renderHand() {
+            const div = document.getElementById('hand-container'); div.innerHTML='';
+            state.hand.forEach((c, i) => {
+                const el = document.createElement('div'); el.className='card';
+                el.innerHTML = `
+                    <div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-id">#${c.id}</div></div>
+                    <div class="card-name">${c.name}</div>
+                    <div class="card-body">${fmt(c.eff)}</div>
+                `;
+                // 點擊事件
                 el.onclick = (e) => {
                     e.stopPropagation();
-                    if(confirm(`Remove ${card.name}?`)) {
-                        state.deck.splice(index, 1);
-                        overlay.style.display = 'none';
-                        state.isRewardMode = false;
-                        onRewardChosen();
+                    if(state.eng < c.cost) { log("NO ENERGY"); return; }
+                    
+                    // 條件檢查 (Req)
+                    const req = /\[#req\s+(.*?)\]/.exec(c.eff);
+                    if(req && !state.curEn.marks.includes(req[1].trim())) { log(`REQ: ${req[1]}`); return; }
+                    const reqm = /\[#reqme\s+(.*?)\]/.exec(c.eff);
+                    if(reqm && !state.pMarks.includes(reqm[1].trim())) { log(`NEED: ${reqm[1]}`); return; }
+
+                    if(state.sel && state.sel.idx === i) cancelSel();
+                    else {
+                        cancelSel();
+                        state.sel = { idx:i, card:c };
+                        el.classList.add('selected');
+                        // 自動判斷目標
+                        const isAtk = /\[#(dmg|psn|weak|vuln|stun|drain|pure|mark|unmark|req)/.test(c.eff);
+                        if(isAtk) { document.getElementById('enemy-target').classList.add('target-active'); state.sel.target='en'; }
+                        else { document.getElementById('player-box').classList.add('target-active'); state.sel.target='pl'; }
                     }
                 };
-                content.appendChild(el);
+                // 角度
+                const rot = (i - (state.hand.length-1)/2) * 5;
+                el.style.transform = `rotate(${rot}deg) translateY(${Math.abs(rot)*2}px)`;
+                
+                div.appendChild(el);
             });
         }
 
-        function showAddCardUI() {
-            state.isRewardMode = true;
-            const overlay = document.getElementById('card-selection-overlay');
-            const content = document.getElementById('pile-viewer-content');
-            document.getElementById('selection-title-text').innerText = "CHOOSE A NEW CARD";
-            document.querySelector('.close-tip').style.display = 'none';
-            content.innerHTML = '';
-            overlay.style.display = 'flex';
-            for(let i=0; i<3; i++) {
-                const card = state.masterLibrary[Math.floor(Math.random() * state.masterLibrary.length)];
-                const el = createCardElement(card);
-                el.style.position = 'relative'; el.style.margin = '0'; el.style.transform = 'scale(0.9)';
-                el.onclick = (e) => {
-                    e.stopPropagation();
-                    if(confirm(`Add ${card.name} to deck?`)) {
-                        state.deck.push({...card});
-                        overlay.style.display = 'none';
-                        state.isRewardMode = false;
-                        onRewardChosen();
+        function cancelSel() {
+            state.sel = null;
+            document.querySelectorAll('.selected').forEach(e=>e.classList.remove('selected'));
+            document.querySelectorAll('.target-active').forEach(e=>e.classList.remove('target-active'));
+        }
+
+        document.getElementById('enemy-target').onclick = () => { if(state.sel && state.sel.target==='en') playCard(state.sel.card, state.sel.idx); };
+        document.getElementById('player-box').onclick = () => { if(state.sel && state.sel.target==='pl') playCard(state.sel.card, state.sel.idx); };
+
+        document.getElementById('end-btn').onclick = () => {
+            if(!state.curEn) return;
+            // 棄手牌
+            state.hand.forEach(c=>state.disc.push(c)); state.hand=[];
+            renderHand();
+            
+            // 敵人回合
+            if(state.curEn.psn>0) { 
+                state.curEn.curHP-=state.curEn.psn; state.curEn.psn--; log(`POISON ${state.curEn.psn+1}`);
+                if(state.curEn.curHP<=0) { nextEn(); newTurn(); return; }
+            }
+            
+            if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
+            else {
+                const act = state.curEn.acts[(state.curEn.step++) % state.curEn.acts.length];
+                const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
+                while((m=reg.exec(act))!==null) {
+                    const t=m[1], v=calc(m[2]);
+                    if(t==='dmg') {
+                        let inc = v; if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
+                        let rem = inc;
+                        if(state.pShd>=rem) { state.pShd-=rem; rem=0; log("BLOCKED"); }
+                        else { rem-=state.pShd; state.pShd=0; }
+                        if(rem>0) { state.pHP-=rem; log(`TOOK ${rem}`); visualFlash('player-box','dmg'); }
                     }
-                };
-                content.appendChild(el);
+                    if(t==='heal') { state.curEn.curHP+=v; log(`EN HEAL ${v}`); }
+                    if(t==='mark') { state.pMarks.push(m[2].trim()); log(`MARKED: ${m[2]}`); }
+                }
+            }
+            
+            if(state.curEn.vuln>0) state.curEn.vuln--;
+            if(state.curEn.weak>0) state.curEn.weak--;
+            
+            newTurn();
+        };
+
+        function newTurn() {
+            state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
+        }
+
+        // --- UI Utils ---
+        function update() {
+            // Stats
+            document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
+            document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;
+            document.getElementById('ui-round').innerText = state.round;
+            document.getElementById('hand-counter').innerText = `${state.hand.length}/${state.maxHand}`;
+            document.getElementById('ui-draw-n').innerText = state.draw.length;
+            document.getElementById('ui-disc-n').innerText = state.disc.length;
+
+            // Player
+            document.getElementById('ui-pl-hp-text').innerText = `${state.pHP}/${state.pMaxHP}`;
+            document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, (state.pHP/state.pMaxHP)*100)+'%';
+            document.getElementById('ui-pl-shield-fill').style.width = state.pShd>0 ? Math.min(100,(state.pShd/state.pMaxHP)*100)+'%' : '0%';
+            const pb = document.getElementById('pl-status'); pb.innerHTML='';
+            if(state.pShd>0) pb.innerHTML+=`<span class="status-icon st-shield">${state.pShd}</span>`;
+            if(state.pStr>0) pb.innerHTML+=`<span class="status-icon st-str">${state.pStr}</span>`;
+            countMarks(state.pMarks).forEach(m=> pb.innerHTML+=`<span class="status-text">${m.n}${m.c>1?' x'+m.c:''}</span>`);
+
+            // Enemy
+            if(state.curEn) {
+                const e = state.curEn;
+                document.getElementById('ui-en-name').innerText = e.name;
+                document.getElementById('ui-en-hp-text').innerText = `${e.curHP}/${e.hp}`;
+                document.getElementById('ui-en-hp-fill').style.width = Math.max(0, (e.curHP/e.hp)*100)+'%';
+                
+                const act = e.acts[e.step % e.acts.length];
+                document.getElementById('ui-en-intent').innerText = `INTENT: ${act}`;
+
+                const eb = document.getElementById('en-status'); eb.innerHTML='';
+                if(e.psn>0) eb.innerHTML+=`<span class="status-icon st-poison">${e.psn}</span>`;
+                if(e.vuln>0) eb.innerHTML+=`<span class="status-icon st-vuln">${e.vuln}</span>`;
+                if(e.weak>0) eb.innerHTML+=`<span class="status-icon st-weak">${e.weak}</span>`;
+                if(e.stun) eb.innerHTML+=`<span class="status-icon st-stun">STUN</span>`;
+                countMarks(e.marks).forEach(m=> eb.innerHTML+=`<span class="status-text">${m.n}${m.c>1?' x'+m.c:''}</span>`);
+            }
+            if(state.pHP<=0) { setTimeout(()=>location.reload(), 500); alert("DEFEAT"); }
+        }
+
+        function showReward() {
+            state.mode = 'reward';
+            const ov = document.getElementById('overlay-screen');
+            const rc = document.getElementById('reward-container');
+            const vg = document.getElementById('viewer-grid');
+            
+            document.getElementById('overlay-title').innerText = "WAVE CLEARED";
+            document.getElementById('overlay-tip').style.display = 'none';
+            vg.innerHTML = ''; rc.innerHTML = ''; ov.style.display = 'flex';
+
+            // Rewards
+            const r1 = `<div class="reward-card" onclick="rewardRemove()"><div class="reward-icon">🔥</div><div>PURGE<br><span style="font-size:0.7rem;color:#888">Remove a card</span></div></div>`;
+            const r2 = `<div class="reward-card" onclick="rewardAdd()"><div class="reward-icon">🃏</div><div>DRAFT<br><span style="font-size:0.7rem;color:#888">Add a card</span></div></div>`;
+            const r3 = `<div class="reward-card" onclick="rewardHeal()"><div class="reward-icon">❤</div><div>REST<br><span style="font-size:0.7rem;color:#888">Heal 15%</span></div></div>`;
+            rc.innerHTML = r1+r2+r3;
+        }
+
+        window.rewardHeal = () => {
+            state.pHP = Math.min(state.pMaxHP, state.pHP + Math.floor(state.pMaxHP*0.15));
+            nextLevel();
+        };
+        window.rewardRemove = () => {
+            const rc = document.getElementById('reward-container'); rc.innerHTML = '';
+            const vg = document.getElementById('viewer-grid');
+            state.deck.forEach((c,i)=>{
+                const el = mkCardEl(c); el.onclick = ()=>{ if(confirm("Remove?")) { state.deck.splice(i,1); nextLevel(); }};
+                vg.appendChild(el);
+            });
+        };
+        window.rewardAdd = () => {
+            const rc = document.getElementById('reward-container'); rc.innerHTML = '';
+            const vg = document.getElementById('viewer-grid');
+            for(let i=0;i<3;i++){
+                const c = state.lib[Math.floor(Math.random()*state.lib.length)];
+                const el = mkCardEl(c); el.onclick = ()=>{ if(confirm("Add?")) { state.deck.push({...c}); nextLevel(); }};
+                vg.appendChild(el);
+            }
+        };
+
+        function nextLevel() {
+            document.getElementById('overlay-screen').style.display='none';
+            state.round++; state.mode='battle'; genWave(); initBattle();
+        }
+
+        function showPile(t, arr) {
+            if(state.mode==='reward') return;
+            const ov = document.getElementById('overlay-screen');
+            const rc = document.getElementById('reward-container');
+            const vg = document.getElementById('viewer-grid');
+            document.getElementById('overlay-title').innerText = t;
+            document.getElementById('overlay-tip').style.display = 'block';
+            rc.innerHTML = ''; vg.innerHTML = '';
+            [...arr].sort((a,b)=>a.id-b.id).forEach(c => vg.appendChild(mkCardEl(c)));
+            ov.style.display = 'flex'; state.mode='view';
+        }
+
+        function closeOverlay(e) {
+            if(state.mode==='view' && e.target.id==='overlay-screen') {
+                document.getElementById('overlay-screen').style.display='none'; state.mode='battle';
             }
         }
 
-        function createCardElement(d) {
-            const el = document.createElement('div');
-            el.className = 'card';
-            let niceDesc = formatCardText(d.effect);
-            el.innerHTML = `<div class="card-cost">${d.cost}</div><div class="card-name">${d.name}</div><div class="card-desc">${niceDesc}</div><div class="card-row-id">#${d.row}</div>`;
+        function mkCardEl(c) {
+            const el = document.createElement('div'); el.className='card';
+            el.innerHTML=`<div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-id">#${c.id}</div></div><div class="card-name">${c.name}</div><div class="card-body">${fmt(c.eff)}</div>`;
+            el.style.position='relative'; el.style.margin='0'; el.style.transform='none';
             return el;
         }
 
-        function onRewardChosen() {
-            document.getElementById('reward-options').style.display = 'none';
-            document.querySelector('.warning-text').style.display = 'none';
-            document.querySelector('.victory-subtitle').innerText = "PREPARE FOR NEXT BATTLE";
-            document.getElementById('next-lvl-btn').style.display = 'block';
+        function fmt(t) {
+            return t.replace(/\[#(\w+)\s*(.*?)\]/g, (m,k,v)=>{
+                if(k==='dmg') return `<span class="tag bg-dmg">DMG ${v}</span>`;
+                if(k==='def') return `<span class="tag bg-def">DEF ${v}</span>`;
+                if(k==='heal') return `<span class="tag bg-heal">HEAL ${v}</span>`;
+                if(k==='mark') return `<span class="tag bg-mark">${v}</span>`;
+                if(k==='req') return `<span class="tag bg-req">REQ ${v}</span>`;
+                if(k==='once') return `<span class="tag bg-once">ONCE</span>`;
+                return `<span class="tag bg-misc">${k.toUpperCase()} ${v}</span>`;
+            });
         }
 
-        function goToNextLevel() {
-            document.getElementById('victory-screen').style.display = 'none';
-            document.getElementById('reward-options').style.display = 'flex';
-            document.querySelector('.warning-text').style.display = 'block';
-            document.querySelector('.victory-subtitle').innerText = "CHOOSE YOUR REWARD";
-            document.getElementById('next-lvl-btn').style.display = 'none';
-            state.round++;
-            generateWave();
-            startBattle();
-        }
-
-        function resolveVal(valStr) {
-            if (!valStr || valStr.toString().trim() === "") return 1;
-            if (isNaN(valStr) && !valStr.includes('{')) return 1;
-            if (!isNaN(valStr)) return parseFloat(valStr);
-            const en = state.currentEnemy;
-            const handCount = state.currentHand.length;
-            const waveLeft = state.currentWave ? (state.currentWave.length - state.enemyWaveIdx) : 0;
-            let expr = valStr.toString().toLowerCase()
-                .replace(/{hp}/g, state.playerHP).replace(/{mhp}/g, state.playerMaxHP).replace(/{shd}/g, state.playerShield)
-                .replace(/{str}/g, state.playerStr).replace(/{eng}/g, state.energy).replace(/{max_eng}/g, state.maxEnergy)
-                .replace(/{loss}/g, (state.playerMaxHP - state.playerHP)).replace(/{hand}/g, handCount).replace(/{max_hand}/g, state.maxHandSize)
-                .replace(/{draw_pile}/g, state.drawPile.length).replace(/{disc_pile}/g, state.discardPile.length)
-                .replace(/{round}/g, state.round).replace(/{wave}/g, waveLeft)
-                .replace(/{en_hp}/g, en ? en.curHP : 0).replace(/{en_mhp}/g, en ? en.hp : 0).replace(/{en_loss}/g, en ? (en.hp - en.curHP) : 0)
-                .replace(/{en_psn}/g, en ? en.poison : 0).replace(/{en_vuln}/g, en ? en.vulnerable : 0).replace(/{en_weak}/g, en ? en.weak : 0).replace(/{en_type}/g, en ? en.type : 1);
-            try { return Math.floor(new Function('return ' + expr)()); } catch (e) { return 0; }
-        }
-
-        function generateWave() {
-            const cfg = state.waveConfig[state.round - 1];
-            if(!cfg) return alert("Victory! You have conquered all waves.");
-            let wave = [];
-            const add = (type, count) => { const p = state.enemyPool.filter(en => en.type === type); for(let i=0; i<count; i++) if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]}); };
-            add(1, cfg.n); add(2, cfg.e); add(3, cfg.b); add(4, cfg.z);
-            state.currentWave = wave; state.enemyWaveIdx = 0; spawnNext();
-        }
-
-        function spawnNext() {
-            document.body.classList.remove('boss-mode');
-            if(state.enemyWaveIdx >= state.currentWave.length) {
-                document.getElementById('victory-screen').style.display = 'flex';
-                return;
-            }
-            const raw = state.currentWave[state.enemyWaveIdx];
-            state.currentEnemy = { ...raw, curHP: raw.hp, actionStep: 0, poison: 0, vulnerable: 0, weak: 0, stunned: false, markers: [] };
-            state.enemyWaveIdx++;
-            const box = document.getElementById('enemy-target');
-            box.className = 'enemy-box tier-' + state.currentEnemy.type;
-            if (state.currentEnemy.type === 4) { document.body.classList.add('boss-mode'); showLog("⚠ BOSS WARNING ⚠"); if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }
-            updateUI();
-        }
-
-        function draw(n) {
-            const area = document.getElementById('hand-area');
-            const slotsLeft = state.maxHandSize - state.currentHand.length;
-            let toDraw = Math.min(n, slotsLeft);
-            if (toDraw <= 0 && n > 0) { showLog("HAND FULL!"); return; }
-            for(let i=0; i<toDraw; i++){
-                if(state.drawPile.length === 0) {
-                    if(state.discardPile.length > 0) {
-                        state.drawPile = [...state.discardPile]; state.discardPile = []; shuffle(state.drawPile); showLog("SHUFFLE");
-                    } else { showLog("NO CARDS"); break; }
-                }
-                const d = state.drawPile.pop();
-                state.currentHand.push(d); 
-                const el = createCardElement(d);
-                const rot = (Math.random() * 6 - 3).toFixed(1);
-                el.style.transform = `rotate(${rot}deg)`;
-                el.onclick = (e) => { e.stopPropagation(); if(state.energy >= d.cost) { select(el, d); if(navigator.vibrate) navigator.vibrate(10); } else { showLog("NOT ENOUGH ENERGY"); if(navigator.vibrate) navigator.vibrate(50); }};
-                area.appendChild(el);
-            }
-            updateUI();
-        }
-
-        function formatCardText(text) {
-            let t = text;
-            t = t.replace(/\[#once\]/g, '<span class="tag-badge bg-once">ONCE</span>');
-            t = t.replace(/\[#mark\s+(.*?)\]/g, '<span class="tag-badge bg-mark">$1</span>');
-            t = t.replace(/\[#req\s+(.*?)\]/g, '<span class="tag-badge bg-req">REQ: $1</span>');
-            t = t.replace(/\[#reqme\s+(.*?)\]/g, '<span class="tag-badge bg-req">NEED: $1</span>');
-            t = t.replace(/\[#unmark\s+(.*?)\]/g, '<span class="tag-badge bg-draw">CLR: $1</span>');
-            t = t.replace(/\[#hand_limit\s+(.*?)\]/g, '<span class="tag-badge bg-draw">HAND MAX $1</span>');
-            t = t.replace(/\[#dmg\s+(.*?)\]/g, '<span class="tag-badge bg-dmg">DMG $1</span>');
-            t = t.replace(/\[#def\s+(.*?)\]/g, '<span class="tag-badge bg-def">DEF $1</span>');
-            t = t.replace(/\[#heal\s+(.*?)\]/g, '<span class="tag-badge bg-heal">HEAL $1</span>');
-            t = t.replace(/\[#psn\s+(.*?)\]/g, '<span class="tag-badge bg-psn">PSN $1</span>');
-            t = t.replace(/\[#eng\s+(.*?)\]/g, '<span class="tag-badge bg-eng">ENG +$1</span>');
-            t = t.replace(/\[#draw\s+(.*?)\]/g, '<span class="tag-badge bg-draw">DRAW $1</span>');
-            t = t.replace(/\[#sdmg\s+(.*?)\]/g, '<span class="tag-badge bg-sdmg">HURT $1</span>');
-            t = t.replace(/\[#str\s+(.*?)\]/g, '<span class="tag-badge bg-str">STR +$1</span>');
-            t = t.replace(/\[#weak\s+(.*?)\]/g, '<span class="tag-badge bg-weak">WEAK $1</span>');
-            t = t.replace(/\[#vuln\s+(.*?)\]/g, '<span class="tag-badge bg-vuln">VULN $1</span>');
-            t = t.replace(/\[#stun\s+(.*?)\]/g, '<span class="tag-badge bg-stun">STUN</span>');
-            t = t.replace(/\[#drain\s+(.*?)\]/g, '<span class="tag-badge bg-drain">DRAIN $1</span>');
-            t = t.replace(/\[#pure\s+(.*?)\]/g, '<span class="tag-badge bg-pure">PURE $1</span>');
-            t = t.replace(/\[#maxhp\s+(.*?)\]/g, '<span class="tag-badge bg-maxhp">MAXHP +$1</span>');
-            return t;
-        }
-
-        function select(el, d) {
-            const reqMatch = /\[#req\s+(.*?)\]/.exec(d.effect);
-            if (reqMatch && !state.currentEnemy.markers.includes(reqMatch[1].trim())) { showLog(`REQ: ${reqMatch[1]}`); if(navigator.vibrate) navigator.vibrate(50); return cancel(); }
-            const reqMeMatch = /\[#reqme\s+(.*?)\]/.exec(d.effect);
-            if (reqMeMatch && !state.playerMarkers.includes(reqMeMatch[1].trim())) { showLog(`NEED: ${reqMeMatch[1]}`); if(navigator.vibrate) navigator.vibrate(50); return cancel(); }
-            if(state.selectedCard?.el === el) return cancel();
-            cancel(); state.selectedCard = {el, d}; el.classList.add('selected');
-            if(/\[#(dmg|psn|weak|vuln|stun|drain|pure|mark|unmark|req)/.test(d.effect)) document.getElementById('enemy-target').classList.add('target-active');
-            if(/\[#(heal|def|eng|draw|sdmg|str|maxhp|reqme|hand_limit)/.test(d.effect)) document.getElementById('player-hub').classList.add('target-active');
-        }
-
-        function cancel() {
-            if(state.selectedCard) state.selectedCard.el.classList.remove('selected');
-            state.selectedCard = null; document.querySelectorAll('.target-active').forEach(e => e.classList.remove('target-active'));
-        }
-
-        document.getElementById('enemy-target').onclick = () => { if(state.selectedCard) applyCardEffect("enemy"); };
-        document.getElementById('player-hub').onclick = () => { if(state.selectedCard) applyCardEffect("player"); };
-
-        function applyCardEffect(target) {
-            const d = state.selectedCard.d;
-            state.energy -= d.cost;
-            const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
-            while((m = reg.exec(d.effect)) !== null) {
-                const tag = m[1], rawVal = m[2], val = resolveVal(rawVal);
-                if(tag === 'hand_limit') { state.maxHandSize = Math.max(0, state.maxHandSize + val); showLog(`HAND LIMIT ${val > 0 ? '+' : ''}${val}`); }
-                if(tag === 'mark') { const n = rawVal.trim(); target === 'enemy' ? state.currentEnemy.markers.push(n) : state.playerMarkers.push(n); showLog(`MARKED: ${n}`); }
-                if(tag === 'unmark') { const n = rawVal.trim(); const arr = target === 'enemy' ? state.currentEnemy.markers : state.playerMarkers; const idx = arr.indexOf(n); if(idx>-1){arr.splice(idx,1); showLog(`CLEARED: ${n}`);} }
-                if(tag === 'dmg' && target === 'enemy') damageEnemy(val);
-                if(tag === 'pure' && target === 'enemy') { state.currentEnemy.curHP -= val; showLog(`PURE DMG: ${val}`); visualFlash('enemy-target', 'pure'); }
-                if(tag === 'drain' && target === 'enemy') { const actualDmg = damageEnemy(val); healPlayer(actualDmg); }
-                if(tag === 'psn' && target === 'enemy') { state.currentEnemy.poison += val; showLog(`POISON: ${val}`); }
-                if(tag === 'weak' && target === 'enemy') { state.currentEnemy.weak += val; showLog(`WEAK: ${val} Turns`); }
-                if(tag === 'vuln' && target === 'enemy') { state.currentEnemy.vulnerable += val; showLog(`VULNERABLE: ${val} Turns`); }
-                if(tag === 'stun' && target === 'enemy') { state.currentEnemy.stunned = true; showLog(`STUNNED!`); }
-                if(tag === 'def') { state.playerShield += val; showLog(`SHIELD: ${val}`); }
-                if(tag === 'str') { state.playerStr += val; showLog(`STRENGTH UP: ${val}`); }
-                if(tag === 'heal') healPlayer(val);
-                if(tag === 'maxhp') { state.playerMaxHP += val; state.playerHP += val; showLog(`MAX HP UP: ${val}`); }
-                if(tag === 'eng') { state.energy = Math.min(10, state.energy + val); showLog(`ENERGY +${val}`); }
-                if(tag === 'draw') { draw(val); showLog(`DRAW ${val}`); }
-                if(tag === 'sdmg') { state.playerHP -= val; showLog(`SACRIFICE: ${val}`); }
-            }
-            const handIdx = state.currentHand.indexOf(d); if (handIdx > -1) state.currentHand.splice(handIdx, 1);
-            if (d.effect.includes('[#once]')) showLog("BANISHED"); else state.discardPile.push(d);
-            state.selectedCard.el.remove(); cancel(); checkWin(); updateUI();
-        }
-
-        function damageEnemy(baseDmg) {
-            let dmg = baseDmg + state.playerStr; if(state.currentEnemy.vulnerable > 0) dmg = Math.floor(dmg * 1.5);
-            state.currentEnemy.curHP -= dmg; showLog(`HIT: ${dmg}`); visualFlash('enemy-target', 'dmg'); return dmg;
-        }
-        function healPlayer(amt) { state.playerHP = Math.min(state.playerMaxHP, state.playerHP + amt); showLog(`HEAL: ${amt}`); }
-        function enemyHeal(amt) { state.currentEnemy.curHP = Math.min(state.currentEnemy.hp, state.currentEnemy.curHP + amt); showLog(`ENEMY HEAL: ${amt}`); visualFlash('enemy-target', 'pure'); }
-        function checkWin() { if(state.currentEnemy && state.currentEnemy.curHP <= 0) spawnNext(); }
-        function playerTakeDamage(amt) {
-            let incoming = amt; if(state.currentEnemy.weak > 0) incoming = Math.floor(incoming * 0.75);
-            let remain = incoming; if(state.playerShield > 0) { if(state.playerShield >= remain) { state.playerShield -= remain; remain = 0; showLog(`BLOCKED!`); } else { remain -= state.playerShield; state.playerShield = 0; } }
-            if(remain > 0) { state.playerHP -= remain; showLog(`TOOK ${remain} DMG`); visualFlash('player-hub', 'dmg'); } updateUI();
-        }
-
-        document.getElementById('end-btn').onclick = () => {
-            if(!state.currentEnemy) return;
-            document.getElementById('hand-area').innerHTML = '';
-            state.currentHand.forEach(card => state.discardPile.push(card)); state.currentHand = [];
-            if(state.currentEnemy.poison > 0) { const pDmg = state.currentEnemy.poison; state.currentEnemy.curHP -= pDmg; state.currentEnemy.poison = Math.max(0, state.currentEnemy.poison - 1); showLog(`POISON DMG: ${pDmg}`); if(state.currentEnemy.curHP <= 0) { spawnNext(); startPlayerTurn(); return; } }
-            if(state.currentEnemy.stunned) { showLog("ENEMY STUNNED!"); state.currentEnemy.stunned = false; } else { enemyAction(); }
-            if(state.currentEnemy.vulnerable > 0) state.currentEnemy.vulnerable--; if(state.currentEnemy.weak > 0) state.currentEnemy.weak--;
-            startPlayerTurn();
-        };
-
-        function enemyAction() {
-            const acts = state.currentEnemy.actions; if(!acts.length) return;
-            const currentAct = acts[state.currentEnemy.actionStep % acts.length];
-            const reg = /\[#(\w+)\s*(.*?)\]/g; let m;
-            while((m = reg.exec(currentAct)) !== null) {
-                const tag = m[1], rawVal = m[2], val = resolveVal(rawVal);
-                if(tag === 'dmg') playerTakeDamage(val); if(tag === 'heal') enemyHeal(val);
-                if(tag === 'mark') { state.playerMarkers.push(rawVal.trim()); showLog(`ENEMY MARKED: ${rawVal.trim()}`); }
-                if(tag === 'unmark') { const idx = state.playerMarkers.indexOf(rawVal.trim()); if(idx > -1) { state.playerMarkers.splice(idx, 1); showLog(`UNMARKED: ${rawVal.trim()}`); }}
-            }
-            state.currentEnemy.actionStep++;
-        }
-
-        function startPlayerTurn() { state.playerShield = 0; state.energy = state.maxEnergy; draw(5); updateUI(); }
-        function showLog(msg) { const log = document.getElementById('action-log'); log.innerText = msg; log.style.opacity = 1; log.style.transform = "translateY(-20px)"; log.style.transition = "0s"; setTimeout(()=>{ log.style.transition = "1s"; log.style.opacity = 0; log.style.transform = "translateY(0)"; }, 800); }
-        function visualFlash(id, type) { const el = document.getElementById(id); if(type === 'dmg') el.style.filter = "brightness(2) sepia(1) hue-rotate(-50deg) saturate(5)"; if(type === 'pure') el.style.filter = "invert(1)"; setTimeout(()=> el.style.filter = "", 100); }
-        function getGroupedMarkers(markers) { const counts = {}; markers.forEach(m => { counts[m] = (counts[m] || 0) + 1; }); return Object.entries(counts).map(([name, count]) => ({name, count})); }
-
-        function updateUI() {
-            document.getElementById('hand-counter').innerText = `${state.currentHand.length}/${state.maxHandSize}`;
-            document.getElementById('ui-draw-count').innerText = state.drawPile.length;
-            document.getElementById('ui-disc-count').innerText = state.discardPile.length;
-            if(state.currentEnemy) {
-                document.getElementById('ui-en-name').innerText = state.currentEnemy.name;
-                document.getElementById('ui-en-row').innerText = `Row: ${state.currentEnemy.row}`;
-                const enPct = (state.currentEnemy.curHP / state.currentEnemy.hp) * 100;
-                document.getElementById('ui-en-hp-fill').style.width = Math.max(0, enPct) + '%';
-                document.getElementById('ui-en-hp-text').innerText = `${state.currentEnemy.curHP} / ${state.currentEnemy.hp}`;
-                const sBar = document.getElementById('en-status'); sBar.innerHTML = '';
-                getGroupedMarkers(state.currentEnemy.markers).forEach(item => { const cls = 'marker-' + item.name.toLowerCase(); const countStr = item.count > 1 ? ` x${item.count}` : ''; sBar.innerHTML += `<div class="status-text ${cls}">${item.name}${countStr}</div>`; });
-                const addIcon = (txt, cls) => sBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
-                if(state.currentEnemy.poison > 0) addIcon(`☠ ${state.currentEnemy.poison}`, 'st-poison');
-                if(state.currentEnemy.vulnerable > 0) addIcon(`💔 ${state.currentEnemy.vulnerable}`, 'st-vuln');
-                if(state.currentEnemy.weak > 0) addIcon(`📉 ${state.currentEnemy.weak}`, 'st-weak');
-                if(state.currentEnemy.stunned) addIcon(`⚡ STUN`, 'st-stun');
-                const acts = state.currentEnemy.actions;
-                if(acts.length) { document.getElementById('ui-en-intent').innerText = `INTENT: ${acts[state.currentEnemy.actionStep % acts.length]}`; }
-            }
-            document.getElementById('ui-round').innerText = state.round;
-            document.getElementById('ui-energy').innerText = `${state.energy}/${state.maxEnergy}`;
-            document.getElementById('ui-wave-left').innerText = Math.max(0, state.currentWave.length - state.enemyWaveIdx);
-            document.getElementById('ui-pl-hp-text').innerText = `${state.playerHP} / ${state.playerMaxHP}`;
-            document.getElementById('ui-pl-hp-fill').style.width = Math.max(0, (state.playerHP/state.playerMaxHP)*100) + '%';
-            const sFill = document.getElementById('ui-pl-shield-fill');
-            sFill.style.width = state.playerShield > 0 ? Math.min(100, (state.playerShield/state.playerMaxHP)*100) + '%' : '0%';
-            const pBar = document.getElementById('pl-status'); pBar.innerHTML = '';
-            getGroupedMarkers(state.playerMarkers).forEach(item => { const cls = 'marker-' + item.name.toLowerCase(); const countStr = item.count > 1 ? ` x${item.count}` : ''; pBar.innerHTML += `<div class="status-text ${cls}">${item.name}${countStr}</div>`; });
-            const addPIcon = (txt, cls) => pBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
-            if(state.playerShield > 0) addPIcon(`🛡 ${state.playerShield}`, 'st-shield');
-            if(state.playerStr > 0) addPIcon(`💪 ${state.playerStr}`, 'st-str');
-            if(state.playerHP <= 0) { setTimeout(() => { alert("SYSTEM FAILURE. RELOAD."); location.reload(); }, 100); }
-        }
-        document.body.onclick = cancel;
-        window.onload = init;
+        function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
+        function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
+        function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
+        
+        document.body.onclick = () => { if(state.sel) cancelSel(); };
     </script>
 </body>
 </html>

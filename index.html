@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v8.2 - Ultimate</title>
+    <title>Steampunk Duelist v8.3 - Math Update</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -12,9 +12,7 @@
             --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
             --danger: #ff4444; --success: #44ff44; --shield: #00aaff; --poison: #bf00ff;
             --str: #ff9900; --vuln: #ff0055; --weak: #88cc00;
-            /* BOSS 特效變數 */
-            --boss-purple: #b300ff; 
-            --boss-red-bg: #3a0000;
+            --boss-purple: #b300ff; --boss-red-bg: #3a0000;
         }
 
         body {
@@ -22,17 +20,11 @@
             color: var(--parchment); font-family: 'IM Fell English SC', serif;
             overflow: hidden; height: 100vh; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
-            transition: background-image 1.5s ease-in-out;
-            /* 防止手機雙擊縮放 */
-            touch-action: manipulation;
+            transition: background-image 1.5s ease-in-out; touch-action: manipulation;
         }
 
-        /* --- BOSS 模式特效 --- */
-        body.boss-mode {
-            background-image: radial-gradient(circle, #7a0000 0%, var(--boss-red-bg) 100%) !important;
-        }
+        body.boss-mode { background-image: radial-gradient(circle, #7a0000 0%, var(--boss-red-bg) 100%) !important; }
 
-        /* 跑馬燈容器 */
         #marquee-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 35px;
             background: var(--danger); border-bottom: 3px double var(--gold);
@@ -40,59 +32,24 @@
             display: none; box-shadow: 0 0 20px var(--danger);
         }
         body.boss-mode #marquee-container { display: block; }
+        .marquee-content { display: flex; width: fit-content; animation: marquee-scroll 10s linear infinite; }
+        .marquee-content span { white-space: nowrap; font-family: 'Rye', cursive; font-size: 1.3rem; line-height: 35px; padding-right: 50px; text-shadow: 2px 2px 4px #000; }
+        @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        .marquee-content {
-            display: flex; width: fit-content;
-            animation: marquee-scroll 10s linear infinite;
-        }
-        .marquee-content span {
-            white-space: nowrap; font-family: 'Rye', cursive; font-size: 1.3rem;
-            line-height: 35px; padding-right: 50px; text-shadow: 2px 2px 4px #000;
-        }
-        @keyframes marquee-scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
-        /* --- 戰鬥佈局 (電腦版預設) --- */
-        #battle-stage {
-            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
-            display: flex; align-items: center; gap: 40px; transition: 0.3s;
-        }
-
-        .round-gauge {
-            width: 80px; height: 100px; background: var(--leather); border: 3px double var(--brass);
-            border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        .enemy-box {
-            width: 420px; background: #222; border: 6px ridge var(--bronze);
-            padding: 25px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s;
-        }
+        #battle-stage { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 40px; transition: 0.3s; }
+        .round-gauge { width: 80px; height: 100px; background: var(--leather); border: 3px double var(--brass); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        .enemy-box { width: 420px; background: #222; border: 6px ridge var(--bronze); padding: 25px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; }
         .enemy-box.stunned { filter: grayscale(100%) brightness(0.7); border-color: #555 !important; }
         .tier-1 { border-color: #cd7f32 !important; }
         .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
         .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
-        
-        /* Tier 4 (BOSS) 樣式 */
-        .tier-4 {
-            border-color: var(--boss-purple) !important;
-            box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple);
-            animation: boss-pulse 1.5s infinite alternate ease-in-out;
-        }
-        @keyframes boss-pulse {
-            from { box-shadow: 0 0 30px var(--boss-purple), inset 0 0 10px var(--boss-purple); }
-            to   { box-shadow: 0 0 60px var(--boss-purple), inset 0 0 25px var(--boss-purple); filter: brightness(1.1); }
-        }
+        .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple); animation: boss-pulse 1.5s infinite alternate ease-in-out; }
+        @keyframes boss-pulse { from { box-shadow: 0 0 30px var(--boss-purple), inset 0 0 10px var(--boss-purple); } to { box-shadow: 0 0 60px var(--boss-purple), inset 0 0 25px var(--boss-purple); filter: brightness(1.1); } }
         
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
-
         .status-bar { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; height: 24px; }
-        .status-icon {
-            display: inline-flex; align-items: center; justify-content: center;
-            padding: 0 6px; border-radius: 4px; font-weight: bold; font-family: sans-serif;
-            font-size: 0.8rem; box-shadow: 1px 1px 2px #000; color: #fff; border: 1px solid rgba(255,255,255,0.3);
-        }
+        .status-icon { display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; border-radius: 4px; font-weight: bold; font-family: sans-serif; font-size: 0.8rem; box-shadow: 1px 1px 2px #000; color: #fff; border: 1px solid rgba(255,255,255,0.3); }
         .st-poison { background: var(--poison); } .st-shield { background: var(--shield); } .st-str { background: var(--str); }
         .st-vuln { background: var(--vuln); } .st-weak { background: var(--weak); color: #000; } .st-stun { background: #555; border: 1px dashed #fff; }
 
@@ -100,28 +57,18 @@
         .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
         #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; pointer-events: none; transition: 0.3s; }
-        .card { 
-            width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; 
-            border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -15px; 
-            cursor: pointer; position: relative; transition: 0.25s; 
-            background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
-            pointer-events: auto; box-shadow: -5px 5px 15px rgba(0,0,0,0.5);
-        }
+        .card { width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -15px; cursor: pointer; position: relative; transition: 0.25s; background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png'); pointer-events: auto; box-shadow: -5px 5px 15px rgba(0,0,0,0.5); }
         .card:hover { transform: translateY(-40px) rotate(0deg) !important; z-index: 100; margin: 0 5px; }
         .card.selected { transform: translateY(-80px) scale(1.1) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
-        
         .card-cost { position: absolute; top: -15px; left: -15px; width: 40px; height: 40px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.4rem; z-index: 2; }
         .card-name { padding:15px 5px; text-align:center; font-family:'Rye'; font-size:1.0rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
         .card-desc { margin-top: 20px; text-align: center; font-size: 0.85rem; color: #421; padding: 0 10px; line-height: 1.3; font-weight: bold;}
         
         .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.75rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
-        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; }
-        .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; }
-        .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; }
-        .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; }
-        .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; }
-        .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; }
-        .bg-maxhp { background: #228822; border: 1px solid #aaffaa; }
+        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-psn { background: #8800cc; }
+        .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; }
+        .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; }
+        .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; }
 
         .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; position: relative; }
         .hp-fill { height: 100%; width: 100%; transition: 0.4s; position: absolute; left: 0; top: 0; }
@@ -129,183 +76,112 @@
 
         #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; }
         #action-log { position: absolute; top: 120px; width: 100%; text-align: center; color: #fff; font-family: 'Rye'; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 500; font-size: 1.5rem; transition: 0.3s; }
-        
         #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; }
         #end-btn:hover { background: #b87333; transform: translateY(-50%) scale(1.05); }
 
-        /* --- 📱 ★ 關鍵：行動裝置適配 (RWD) --- */
-        /* 當螢幕寬度小於 768px (手機/直立平板) 時啟用 */
         @media (max-width: 768px) {
             body { background-position: center; background-size: cover; }
             .marquee-content span { font-size: 1rem; line-height: 35px; }
-
-            /* 戰鬥區域垂直排列 */
             #battle-stage { top: 55px; width: 100%; flex-direction: column; gap: 5px; }
-            
-            /* 回合數移到右上角 */
             .round-gauge { width: 50px; height: 60px; position: absolute; top: 0; right: 10px; z-index: 10; border-width: 2px; }
-            .round-gauge span:first-child { font-size: 0.5rem; }
-            .round-gauge span:last-child { font-size: 1.2rem !important; }
-
-            /* 敵人變小 */
-            .enemy-box { width: 85%; padding: 10px 15px; margin-top: 15px; }
-            #ui-en-name { font-size: 1.3rem !important; }
-
-            /* 儀表板移到左上角橫排 */
+            .round-gauge span:first-child { font-size: 0.5rem; } .round-gauge span:last-child { font-size: 1.2rem !important; }
+            .enemy-box { width: 85%; padding: 10px 15px; margin-top: 15px; } #ui-en-name { font-size: 1.3rem !important; }
             #side-panel { top: 50px; left: 10px; flex-direction: row; gap: 10px; scale: 0.7; transform-origin: top left; z-index: 20; }
-
-            /* 玩家區域 */
             #player-hub { width: 90%; bottom: 250px; padding: 5px; }
-
-            /* 卡牌區域：底部橫向滑動 */
             #hand-area { height: 190px; bottom: 0; width: 100%; perspective: 500px; overflow-x: auto; justify-content: center; align-items: flex-end; padding-bottom: 5px; }
             .card { width: 100px; height: 150px; margin: 0 -18px; flex-shrink: 0; }
-            .card-name { font-size: 0.7rem; padding: 8px 2px; }
-            .card-desc { font-size: 0.6rem; margin-top: 8px; }
-            .card-cost { width: 25px; height: 25px; font-size: 0.9rem; top: -8px; left: -8px; }
-            .card.selected { transform: translateY(-50px) scale(1.1) !important; }
-
-            /* 按鈕調整適合拇指 */
+            .card-name { font-size: 0.7rem; padding: 8px 2px; } .card-desc { font-size: 0.6rem; margin-top: 8px; }
+            .card-cost { width: 25px; height: 25px; font-size: 0.9rem; top: -8px; left: -8px; } .card.selected { transform: translateY(-50px) scale(1.1) !important; }
             #end-btn { width: 70px; height: 70px; right: 10px; top: auto; bottom: 240px; transform: none; font-size: 0.8rem; border-width: 3px; z-index: 50; }
             #action-log { font-size: 1.2rem; top: 35%; }
         }
     </style>
 </head>
 <body onload="init()">
-
-    <div id="marquee-container">
-        <div class="marquee-content">
-            <span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-            <span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-        </div>
-    </div>
-
+    <div id="marquee-container"><div class="marquee-content"><span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div></div>
     <div id="action-log"></div>
-
     <div id="battle-stage">
-        <div class="round-gauge">
-            <span style="font-size:0.7rem">ROUND</span>
-            <span id="ui-round" style="font-family:'Rye'; font-size:2.2rem; color:var(--gold)">1</span>
-        </div>
+        <div class="round-gauge"><span style="font-size:0.7rem">ROUND</span><span id="ui-round" style="font-family:'Rye'; font-size:2.2rem; color:var(--gold)">1</span></div>
         <div class="enemy-box tier-1" id="enemy-target">
             <div id="ui-en-row" style="font-size:0.7rem; color: #888;">#--</div>
             <div id="ui-en-name" style="font-family:'Rye'; font-size:1.8rem;">LOADING...</div>
             <div id="en-status" class="status-bar"></div>
-            <div class="hp-container">
-                <div id="ui-en-hp-fill" class="hp-fill" style="background: var(--danger);"></div>
-            </div>
+            <div class="hp-container"><div id="ui-en-hp-fill" class="hp-fill" style="background: var(--danger);"></div></div>
             <div id="ui-en-hp-text" style="text-align:right; font-weight:bold; font-size: 0.9rem;">-- / --</div>
             <div id="ui-en-intent" style="color:var(--steam-blue); font-size:0.8rem; margin-top:5px; height:1rem;"></div>
         </div>
     </div>
-
     <div id="side-panel">
-        <div class="gauge-circle">
-            <span style="font-size:0.7rem">ENERGY</span>
-            <span id="ui-energy" style="font-family:'Rye'; font-size:2rem; color:var(--steam-blue)">3/3</span>
-        </div>
-        <div class="gauge-circle">
-            <span style="font-size:0.7rem">WAVE</span>
-            <span id="ui-wave-left" style="font-family:'Rye'; font-size:2rem">--</span>
-        </div>
+        <div class="gauge-circle"><span style="font-size:0.7rem">ENERGY</span><span id="ui-energy" style="font-family:'Rye'; font-size:2rem; color:var(--steam-blue)">3/3</span></div>
+        <div class="gauge-circle"><span style="font-size:0.7rem">WAVE</span><span id="ui-wave-left" style="font-family:'Rye'; font-size:2rem">--</span></div>
     </div>
-
     <div id="player-hub">
-        <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
-            <span>PLAYER_CORE</span>
-            <span id="ui-pl-hp-text">100 / 100</span>
-        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 5px;"><span>PLAYER_CORE</span><span id="ui-pl-hp-text">100 / 100</span></div>
         <div id="pl-status" class="status-bar" style="margin-bottom:5px;"></div>
-        <div class="hp-container">
-            <div id="ui-pl-hp-fill" class="hp-fill" style="background: var(--success);"></div>
-            <div id="ui-pl-shield-fill" class="shield-fill"></div>
-        </div>
+        <div class="hp-container"><div id="ui-pl-hp-fill" class="hp-fill" style="background: var(--success);"></div><div id="ui-pl-shield-fill" class="shield-fill"></div></div>
     </div>
-
     <button id="end-btn">END<br>TURN</button>
     <div id="hand-area"></div>
 
     <script>
         const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
-        const GID_CARD = "0";
-        const GID_ENEMY = "322780304"; 
-        const GID_CONFIG = "1319509950";
+        const GID_CARD = "0"; const GID_ENEMY = "322780304"; const GID_CONFIG = "1319509950";
 
         let state = {
-            playerHP: 100, playerMaxHP: 100,
-            playerShield: 0, playerStr: 0,
-            energy: 3, maxEnergy: 3,
-            round: 1,
+            playerHP: 100, playerMaxHP: 100, playerShield: 0, playerStr: 0,
+            energy: 3, maxEnergy: 3, round: 1,
             cardPool: [], enemyPool: [], waveConfig: [],
-            currentWave: [], currentEnemy: null, enemyWaveIdx: 0,
-            selectedCard: null
+            currentWave: [], currentEnemy: null, enemyWaveIdx: 0, selectedCard: null
         };
 
         async function init() {
             Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (res) => {
-                state.cardPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({
-                    name: r[0], effect: r[1], cost: parseInt(r[2])||0, row: i+2
-                }));
+                state.cardPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], effect: r[1], cost: parseInt(r[2])||0, row: i+2 }));
                 draw(5);
             }});
-
             Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (res) => {
-                state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ 
-                    name: r[0], hp: parseInt(r[1])||10, type: parseInt(r[2])||1, 
-                    actions: [r[4], r[5], r[6], r[7], r[8], r[9]].filter(a => a && a.trim() !== ""), 
-                    row: i+2 
-                }));
-                
+                state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], hp: parseInt(r[1])||10, type: parseInt(r[2])||1, actions: [r[4], r[5], r[6], r[7], r[8], r[9]].filter(a => a && a.trim() !== ""), row: i+2 }));
                 Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: false, complete: (res) => {
-                    // Type 4 在第4欄 (D欄)
-                    state.waveConfig = res.data.slice(1).map(r => ({
-                        n: parseInt(r[0])||0, e: parseInt(r[1])||0, b: parseInt(r[2])||0, z: parseInt(r[3])||0
-                    }));
+                    state.waveConfig = res.data.slice(1).map(r => ({ n: parseInt(r[0])||0, e: parseInt(r[1])||0, b: parseInt(r[2])||0, z: parseInt(r[3])||0 }));
                     generateWave();
                 }});
             }});
+        }
+
+        // --- 核心運算器 ---
+        function resolveVal(valStr) {
+            if (!valStr || valStr.toString().trim() === "") return 1;
+            if (!isNaN(valStr)) return parseFloat(valStr);
+            let expr = valStr.toString().toLowerCase()
+                .replace(/{hp}/g, state.playerHP)
+                .replace(/{mhp}/g, state.playerMaxHP)
+                .replace(/{shd}/g, state.playerShield)
+                .replace(/{str}/g, state.playerStr)
+                .replace(/{eng}/g, state.energy)
+                .replace(/{loss}/g, (state.playerMaxHP - state.playerHP));
+            try { return Math.floor(new Function('return ' + expr)()); } catch (e) { console.error("Math Error:", valStr, e); return 0; }
         }
 
         function generateWave() {
             const cfg = state.waveConfig[state.round - 1];
             if(!cfg) return alert("Victory! You have conquered all waves.");
             let wave = [];
-            const add = (type, count) => {
-                const p = state.enemyPool.filter(en => en.type === type);
-                for(let i=0; i<count; i++) if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]});
-            };
+            const add = (type, count) => { const p = state.enemyPool.filter(en => en.type === type); for(let i=0; i<count; i++) if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]}); };
             add(1, cfg.n); add(2, cfg.e); add(3, cfg.b); add(4, cfg.z);
-            state.currentWave = wave;
-            state.enemyWaveIdx = 0;
-            spawnNext();
+            state.currentWave = wave; state.enemyWaveIdx = 0; spawnNext();
         }
 
         function spawnNext() {
-            // 重置視覺
             document.body.classList.remove('boss-mode');
-            
             if(state.enemyWaveIdx < state.currentWave.length) {
                 const raw = state.currentWave[state.enemyWaveIdx];
-                state.currentEnemy = { 
-                    ...raw, curHP: raw.hp, actionStep: 0, 
-                    poison: 0, vulnerable: 0, weak: 0, stunned: false 
-                };
+                state.currentEnemy = { ...raw, curHP: raw.hp, actionStep: 0, poison: 0, vulnerable: 0, weak: 0, stunned: false };
                 state.enemyWaveIdx++;
-                
                 const box = document.getElementById('enemy-target');
                 box.className = 'enemy-box tier-' + state.currentEnemy.type;
-                
-                // BOSS 特效觸發
-                if (state.currentEnemy.type === 4) {
-                    document.body.classList.add('boss-mode');
-                    showLog("⚠ BOSS WARNING ⚠");
-                    if(navigator.vibrate) navigator.vibrate([200, 100, 200]); // BOSS 進場手機震動
-                }
+                if (state.currentEnemy.type === 4) { document.body.classList.add('boss-mode'); showLog("⚠ BOSS WARNING ⚠"); if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }
                 updateUI();
-            } else {
-                state.round++;
-                generateWave();
-            }
+            } else { state.round++; generateWave(); }
         }
 
         function draw(n) {
@@ -316,35 +192,29 @@
                 const el = document.createElement('div');
                 el.className = 'card';
                 let niceDesc = d.effect;
-                niceDesc = niceDesc.replace(/\[#dmg\s+(\d+)\]/g, '<span class="tag-badge bg-dmg">DMG $1</span>');
-                niceDesc = niceDesc.replace(/\[#def\s+(\d+)\]/g, '<span class="tag-badge bg-def">DEF $1</span>');
-                niceDesc = niceDesc.replace(/\[#heal\s+(\d+)\]/g, '<span class="tag-badge bg-heal">HEAL $1</span>');
-                niceDesc = niceDesc.replace(/\[#psn\s+(\d+)\]/g, '<span class="tag-badge bg-psn">PSN $1</span>');
-                niceDesc = niceDesc.replace(/\[#eng\s+(\d+)\]/g, '<span class="tag-badge bg-eng">ENG +$1</span>');
-                niceDesc = niceDesc.replace(/\[#draw\s+(\d+)\]/g, '<span class="tag-badge bg-draw">DRAW $1</span>');
-                niceDesc = niceDesc.replace(/\[#sdmg\s+(\d+)\]/g, '<span class="tag-badge bg-sdmg">HURT $1</span>');
-                niceDesc = niceDesc.replace(/\[#str\s+(\d+)\]/g, '<span class="tag-badge bg-str">STR +$1</span>');
-                niceDesc = niceDesc.replace(/\[#weak\s+(\d+)\]/g, '<span class="tag-badge bg-weak">WEAK $1</span>');
-                niceDesc = niceDesc.replace(/\[#vuln\s+(\d+)\]/g, '<span class="tag-badge bg-vuln">VULN $1</span>');
-                niceDesc = niceDesc.replace(/\[#stun\s+(\d+)\]/g, '<span class="tag-badge bg-stun">STUN</span>');
-                niceDesc = niceDesc.replace(/\[#drain\s+(\d+)\]/g, '<span class="tag-badge bg-drain">DRAIN $1</span>');
-                niceDesc = niceDesc.replace(/\[#pure\s+(\d+)\]/g, '<span class="tag-badge bg-pure">PURE $1</span>');
-                niceDesc = niceDesc.replace(/\[#maxhp\s+(\d+)\]/g, '<span class="tag-badge bg-maxhp">MAXHP +$1</span>');
+                // 更新：支援顯示公式 (.*?)
+                niceDesc = niceDesc.replace(/\[#dmg\s+(.*?)\]/g, '<span class="tag-badge bg-dmg">DMG $1</span>');
+                niceDesc = niceDesc.replace(/\[#def\s+(.*?)\]/g, '<span class="tag-badge bg-def">DEF $1</span>');
+                niceDesc = niceDesc.replace(/\[#heal\s+(.*?)\]/g, '<span class="tag-badge bg-heal">HEAL $1</span>');
+                niceDesc = niceDesc.replace(/\[#psn\s+(.*?)\]/g, '<span class="tag-badge bg-psn">PSN $1</span>');
+                niceDesc = niceDesc.replace(/\[#eng\s+(.*?)\]/g, '<span class="tag-badge bg-eng">ENG +$1</span>');
+                niceDesc = niceDesc.replace(/\[#draw\s+(.*?)\]/g, '<span class="tag-badge bg-draw">DRAW $1</span>');
+                niceDesc = niceDesc.replace(/\[#sdmg\s+(.*?)\]/g, '<span class="tag-badge bg-sdmg">HURT $1</span>');
+                niceDesc = niceDesc.replace(/\[#str\s+(.*?)\]/g, '<span class="tag-badge bg-str">STR +$1</span>');
+                niceDesc = niceDesc.replace(/\[#weak\s+(.*?)\]/g, '<span class="tag-badge bg-weak">WEAK $1</span>');
+                niceDesc = niceDesc.replace(/\[#vuln\s+(.*?)\]/g, '<span class="tag-badge bg-vuln">VULN $1</span>');
+                niceDesc = niceDesc.replace(/\[#stun\s+(.*?)\]/g, '<span class="tag-badge bg-stun">STUN</span>');
+                niceDesc = niceDesc.replace(/\[#drain\s+(.*?)\]/g, '<span class="tag-badge bg-drain">DRAIN $1</span>');
+                niceDesc = niceDesc.replace(/\[#pure\s+(.*?)\]/g, '<span class="tag-badge bg-pure">PURE $1</span>');
+                niceDesc = niceDesc.replace(/\[#maxhp\s+(.*?)\]/g, '<span class="tag-badge bg-maxhp">MAXHP +$1</span>');
 
                 el.innerHTML = `<div class="card-cost">${d.cost}</div><div class="card-name">${d.name}</div><div class="card-desc">${niceDesc}</div>`;
                 const rot = (Math.random() * 6 - 3).toFixed(1);
                 el.style.transform = `rotate(${rot}deg)`;
-                
-                // ★ 關鍵：手機優化點擊邏輯
                 el.onclick = (e) => { 
                     e.stopPropagation(); 
-                    if(state.energy >= d.cost) {
-                        select(el, d); 
-                        if(navigator.vibrate) navigator.vibrate(10); // 輕微震動回饋
-                    } else {
-                        showLog("NOT ENOUGH ENERGY");
-                        if(navigator.vibrate) navigator.vibrate(50); // 錯誤震動
-                    }
+                    if(state.energy >= d.cost) { select(el, d); if(navigator.vibrate) navigator.vibrate(10); } 
+                    else { showLog("NOT ENOUGH ENERGY"); if(navigator.vibrate) navigator.vibrate(50); }
                 };
                 area.appendChild(el);
             }
@@ -373,10 +243,12 @@
         function applyCardEffect(target) {
             const d = state.selectedCard.d;
             state.energy -= d.cost;
-            const reg = /\[#(\w+)\s*(-?\d+)?\]/g;
+            // 更新：抓取標籤內的任意內容
+            const reg = /\[#(\w+)\s*(.*?)\]/g;
             let m;
             while((m = reg.exec(d.effect)) !== null) {
-                const tag = m[1], val = parseInt(m[2]) || 1;
+                const tag = m[1];
+                const val = resolveVal(m[2]); // 更新：使用解析器
                 if(tag === 'dmg' && target === 'enemy') damageEnemy(val);
                 if(tag === 'pure' && target === 'enemy') { state.currentEnemy.curHP -= val; showLog(`PURE DMG: ${val}`); visualFlash('enemy-target', 'pure'); }
                 if(tag === 'drain' && target === 'enemy') { const actualDmg = damageEnemy(val); healPlayer(actualDmg); }
@@ -402,8 +274,7 @@
             let dmg = baseDmg + state.playerStr;
             if(state.currentEnemy.vulnerable > 0) dmg = Math.floor(dmg * 1.5);
             state.currentEnemy.curHP -= dmg;
-            showLog(`HIT: ${dmg}`);
-            visualFlash('enemy-target', 'dmg');
+            showLog(`HIT: ${dmg}`); visualFlash('enemy-target', 'dmg');
             return dmg;
         }
         function healPlayer(amt) { state.playerHP = Math.min(state.playerMaxHP, state.playerHP + amt); showLog(`HEAL: ${amt}`); }
@@ -440,6 +311,7 @@
             const acts = state.currentEnemy.actions;
             if(!acts.length) return;
             const currentAct = acts[state.currentEnemy.actionStep % acts.length];
+            // 敵人行動目前維持僅支援純數字 (避免過於複雜)，如需升級也可比照辦理
             const reg = /\[#(\w+)\s*(-?\d+)?\]/g; 
             let m;
             while((m = reg.exec(currentAct)) !== null) {

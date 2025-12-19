@@ -1,6 +1,9 @@
-<!DOCTYPE html><html lang="zh-TW"><head>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
     <meta charset="UTF-8">
-    <title>Steampunk Duelist v8.1 - Boss Update</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Steampunk Duelist v8.2 - Ultimate</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -9,7 +12,7 @@
             --leather: #4a3c31; --parchment: #eaddcf; --steam-blue: #00f3ff;
             --danger: #ff4444; --success: #44ff44; --shield: #00aaff; --poison: #bf00ff;
             --str: #ff9900; --vuln: #ff0055; --weak: #88cc00;
-            /* 新增 BOSS 相關變數 */
+            /* BOSS 特效變數 */
             --boss-purple: #b300ff; 
             --boss-red-bg: #3a0000;
         }
@@ -19,7 +22,9 @@
             color: var(--parchment); font-family: 'IM Fell English SC', serif;
             overflow: hidden; height: 100vh; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
-            transition: background-image 1.5s ease-in-out; /* 背景切換動畫 */
+            transition: background-image 1.5s ease-in-out;
+            /* 防止手機雙擊縮放 */
+            touch-action: manipulation;
         }
 
         /* --- BOSS 模式特效 --- */
@@ -32,8 +37,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 35px;
             background: var(--danger); border-bottom: 3px double var(--gold);
             color: #fff; overflow: hidden; z-index: 9999;
-            display: none; /* 預設隱藏 */
-            box-shadow: 0 0 20px var(--danger);
+            display: none; box-shadow: 0 0 20px var(--danger);
         }
         body.boss-mode #marquee-container { display: block; }
 
@@ -50,11 +54,10 @@
             100% { transform: translateX(-50%); }
         }
 
-        /* --- 戰鬥佈局 --- */
+        /* --- 戰鬥佈局 (電腦版預設) --- */
         #battle-stage {
-            position: absolute; top: 60px; /* 下移一點避開跑馬燈 */
-            left: 50%; transform: translateX(-50%);
-            display: flex; align-items: center; gap: 40px;
+            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 40px; transition: 0.3s;
         }
 
         .round-gauge {
@@ -62,7 +65,6 @@
             border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* 敵人區塊 */
         .enemy-box {
             width: 420px; background: #222; border: 6px ridge var(--bronze);
             padding: 25px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s;
@@ -72,7 +74,7 @@
         .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
         .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
         
-        /* 新增 Tier 4 (BOSS) 樣式 */
+        /* Tier 4 (BOSS) 樣式 */
         .tier-4 {
             border-color: var(--boss-purple) !important;
             box-shadow: 0 0 40px var(--boss-purple), inset 0 0 15px var(--boss-purple);
@@ -85,26 +87,19 @@
         
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
 
-        /* --- 狀態顯示列 --- */
         .status-bar { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; height: 24px; }
         .status-icon {
             display: inline-flex; align-items: center; justify-content: center;
             padding: 0 6px; border-radius: 4px; font-weight: bold; font-family: sans-serif;
             font-size: 0.8rem; box-shadow: 1px 1px 2px #000; color: #fff; border: 1px solid rgba(255,255,255,0.3);
         }
-        .st-poison { background: var(--poison); }
-        .st-shield { background: var(--shield); }
-        .st-str    { background: var(--str); }
-        .st-vuln   { background: var(--vuln); }
-        .st-weak   { background: var(--weak); color: #000; }
-        .st-stun   { background: #555; border: 1px dashed #fff; }
+        .st-poison { background: var(--poison); } .st-shield { background: var(--shield); } .st-str { background: var(--str); }
+        .st-vuln { background: var(--vuln); } .st-weak { background: var(--weak); color: #000; } .st-stun { background: #555; border: 1px dashed #fff; }
 
-        /* --- 左側儀表板 --- */
-        #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; }
+        #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; transition: 0.3s; }
         .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-        /* --- 卡牌 --- */
-        #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; pointer-events: none; }
+        #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; pointer-events: none; transition: 0.3s; }
         .card { 
             width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; 
             border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -15px; 
@@ -133,10 +128,50 @@
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2;}
 
         #player-hub { position: absolute; bottom: 320px; left: 50%; transform: translateX(-50%); width: 450px; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; }
-        #action-log { position: absolute; top: 120px; width: 100%; text-align: center; color: #fff; font-family: 'Rye'; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 500; font-size: 1.5rem; }
+        #action-log { position: absolute; top: 120px; width: 100%; text-align: center; color: #fff; font-family: 'Rye'; text-shadow: 0 0 5px #000; pointer-events: none; z-index: 500; font-size: 1.5rem; transition: 0.3s; }
+        
         #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; }
         #end-btn:hover { background: #b87333; transform: translateY(-50%) scale(1.05); }
-    </style></head><body>
+
+        /* --- 📱 ★ 關鍵：行動裝置適配 (RWD) --- */
+        /* 當螢幕寬度小於 768px (手機/直立平板) 時啟用 */
+        @media (max-width: 768px) {
+            body { background-position: center; background-size: cover; }
+            .marquee-content span { font-size: 1rem; line-height: 35px; }
+
+            /* 戰鬥區域垂直排列 */
+            #battle-stage { top: 55px; width: 100%; flex-direction: column; gap: 5px; }
+            
+            /* 回合數移到右上角 */
+            .round-gauge { width: 50px; height: 60px; position: absolute; top: 0; right: 10px; z-index: 10; border-width: 2px; }
+            .round-gauge span:first-child { font-size: 0.5rem; }
+            .round-gauge span:last-child { font-size: 1.2rem !important; }
+
+            /* 敵人變小 */
+            .enemy-box { width: 85%; padding: 10px 15px; margin-top: 15px; }
+            #ui-en-name { font-size: 1.3rem !important; }
+
+            /* 儀表板移到左上角橫排 */
+            #side-panel { top: 50px; left: 10px; flex-direction: row; gap: 10px; scale: 0.7; transform-origin: top left; z-index: 20; }
+
+            /* 玩家區域 */
+            #player-hub { width: 90%; bottom: 250px; padding: 5px; }
+
+            /* 卡牌區域：底部橫向滑動 */
+            #hand-area { height: 190px; bottom: 0; width: 100%; perspective: 500px; overflow-x: auto; justify-content: center; align-items: flex-end; padding-bottom: 5px; }
+            .card { width: 100px; height: 150px; margin: 0 -18px; flex-shrink: 0; }
+            .card-name { font-size: 0.7rem; padding: 8px 2px; }
+            .card-desc { font-size: 0.6rem; margin-top: 8px; }
+            .card-cost { width: 25px; height: 25px; font-size: 0.9rem; top: -8px; left: -8px; }
+            .card.selected { transform: translateY(-50px) scale(1.1) !important; }
+
+            /* 按鈕調整適合拇指 */
+            #end-btn { width: 70px; height: 70px; right: 10px; top: auto; bottom: 240px; transform: none; font-size: 0.8rem; border-width: 3px; z-index: 50; }
+            #action-log { font-size: 1.2rem; top: 35%; }
+        }
+    </style>
+</head>
+<body onload="init()">
 
     <div id="marquee-container">
         <div class="marquee-content">
@@ -191,10 +226,9 @@
     <div id="hand-area"></div>
 
     <script>
-        // 您的 Google Sheet ID
         const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuNEG1oT6a0JsP4Zy8uqFSRDKaxEM8FJetpMWOZ0vR6yg4AGqGtMlLJ_0NSxIE_tqSnOsPd9aLWtg8/pub?output=csv";
         const GID_CARD = "0";
-        const GID_ENEMY = "322780304"; // 地圖試算表的 gid (您給的)
+        const GID_ENEMY = "322780304"; 
         const GID_CONFIG = "1319509950";
 
         let state = {
@@ -223,12 +257,9 @@
                 }));
                 
                 Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: false, complete: (res) => {
-                    // ★ 修改：讀取第 4 欄 (r[3]) 作為 Boss (Type 4) 的數量
+                    // Type 4 在第4欄 (D欄)
                     state.waveConfig = res.data.slice(1).map(r => ({
-                        n: parseInt(r[0])||0, // Type 1
-                        e: parseInt(r[1])||0, // Type 2
-                        b: parseInt(r[2])||0, // Type 3
-                        z: parseInt(r[3])||0  // Type 4 (Boss)
+                        n: parseInt(r[0])||0, e: parseInt(r[1])||0, b: parseInt(r[2])||0, z: parseInt(r[3])||0
                     }));
                     generateWave();
                 }});
@@ -243,20 +274,16 @@
                 const p = state.enemyPool.filter(en => en.type === type);
                 for(let i=0; i<count; i++) if(p.length) wave.push({...p[Math.floor(Math.random()*p.length)]});
             };
-            add(1, cfg.n); 
-            add(2, cfg.e); 
-            add(3, cfg.b); 
-            add(4, cfg.z); // ★ 新增：生成 Type 4 敵人
-            
+            add(1, cfg.n); add(2, cfg.e); add(3, cfg.b); add(4, cfg.z);
             state.currentWave = wave;
             state.enemyWaveIdx = 0;
             spawnNext();
         }
 
         function spawnNext() {
-            // ★ 新增：每次生成前，先重置視覺效果 (移除紅背景)
+            // 重置視覺
             document.body.classList.remove('boss-mode');
-
+            
             if(state.enemyWaveIdx < state.currentWave.length) {
                 const raw = state.currentWave[state.enemyWaveIdx];
                 state.currentEnemy = { 
@@ -266,15 +293,14 @@
                 state.enemyWaveIdx++;
                 
                 const box = document.getElementById('enemy-target');
-                // class 會自動變為 tier-4，觸發紫色邊框
                 box.className = 'enemy-box tier-' + state.currentEnemy.type;
                 
-                // ★ 新增：檢測是否為 Type 4 BOSS
+                // BOSS 特效觸發
                 if (state.currentEnemy.type === 4) {
-                    document.body.classList.add('boss-mode'); // 觸發紅背景與跑馬燈
+                    document.body.classList.add('boss-mode');
                     showLog("⚠ BOSS WARNING ⚠");
+                    if(navigator.vibrate) navigator.vibrate([200, 100, 200]); // BOSS 進場手機震動
                 }
-
                 updateUI();
             } else {
                 state.round++;
@@ -308,7 +334,18 @@
                 el.innerHTML = `<div class="card-cost">${d.cost}</div><div class="card-name">${d.name}</div><div class="card-desc">${niceDesc}</div>`;
                 const rot = (Math.random() * 6 - 3).toFixed(1);
                 el.style.transform = `rotate(${rot}deg)`;
-                el.onclick = (e) => { e.stopPropagation(); if(state.energy >= d.cost) select(el, d); };
+                
+                // ★ 關鍵：手機優化點擊邏輯
+                el.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    if(state.energy >= d.cost) {
+                        select(el, d); 
+                        if(navigator.vibrate) navigator.vibrate(10); // 輕微震動回饋
+                    } else {
+                        showLog("NOT ENOUGH ENERGY");
+                        if(navigator.vibrate) navigator.vibrate(50); // 錯誤震動
+                    }
+                };
                 area.appendChild(el);
             }
         }
@@ -458,4 +495,6 @@
         }
         document.body.onclick = cancel;
         window.onload = init;
-    </script></body></html>
+    </script>
+</body>
+</html>

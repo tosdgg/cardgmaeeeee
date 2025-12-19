@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v8.8 - Hand Limit</title>
+    <title>Steampunk Duelist v9.0 - Cycle & Transition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -25,6 +25,7 @@
 
         body.boss-mode { background-image: radial-gradient(circle, #7a0000 0%, var(--boss-red-bg) 100%) !important; }
 
+        /* 跑馬燈 */
         #marquee-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 35px;
             background: var(--danger); border-bottom: 3px double var(--gold);
@@ -36,6 +37,24 @@
         .marquee-content span { white-space: nowrap; font-family: 'Rye', cursive; font-size: 1.3rem; line-height: 35px; padding-right: 50px; text-shadow: 2px 2px 4px #000; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
+        /* --- 過場畫面 (新增) --- */
+        #victory-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 10000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .victory-title { font-family: 'Rye'; font-size: 4rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 50px; }
+        #next-lvl-btn {
+            position: absolute; right: 10%; top: 50%; transform: translateY(-50%);
+            padding: 20px 40px; font-size: 2rem; font-family: 'Rye';
+            background: var(--steam-blue); color: #000; border: 5px solid #fff;
+            border-radius: 10px; cursor: pointer; box-shadow: 0 0 30px var(--steam-blue);
+            animation: pulse-btn 1s infinite alternate;
+        }
+        @keyframes pulse-btn { from { transform: translateY(-50%) scale(1); } to { transform: translateY(-50%) scale(1.1); } }
+
+        /* --- 戰鬥區域 --- */
         #battle-stage { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 40px; transition: 0.3s; }
         .round-gauge { width: 80px; height: 100px; background: var(--leather); border: 3px double var(--brass); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         
@@ -52,14 +71,26 @@
         
         .status-icon { display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; border-radius: 4px; font-weight: bold; font-family: sans-serif; font-size: 0.8rem; box-shadow: 1px 1px 2px #000; color: #fff; border: 1px solid rgba(255,255,255,0.3); }
         .status-text { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 4px; font-family: 'IM Fell English SC', serif; font-size: 0.8rem; color: #fff; border: 1px solid rgba(255,255,255,0.5); background: #444; margin-right: 4px; box-shadow: 1px 1px 3px #000; text-shadow: 1px 1px 0 #000; }
-        .marker-lockon { background: #ff0055; border-color: #ffaaaa; } 
-        .marker-stance { background: #00aaff; border-color: #aaffff; }
+        .marker-lockon { background: #ff0055; border-color: #ffaaaa; } .marker-stance { background: #00aaff; border-color: #aaffff; }
 
         .st-poison { background: var(--poison); } .st-shield { background: var(--shield); } .st-str { background: var(--str); }
         .st-vuln { background: var(--vuln); } .st-weak { background: var(--weak); color: #000; } .st-stun { background: #555; border: 1px dashed #fff; }
 
         #side-panel { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 20px; transition: 0.3s; }
         .gauge-circle { width: 100px; height: 100px; border: 4px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        /* --- 牌堆顯示 UI (新增) --- */
+        #pile-display {
+            position: absolute; bottom: 20px; left: 20px;
+            display: flex; gap: 15px; z-index: 50;
+        }
+        .pile-box {
+            width: 60px; height: 80px; background: #222; border: 2px solid var(--brass);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 5px; box-shadow: 0 5px 10px #000;
+        }
+        .pile-label { font-size: 0.6rem; color: #888; margin-bottom: 5px; }
+        .pile-count { font-family: 'Rye'; font-size: 1.5rem; color: #fff; }
 
         #hand-area { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; height: 260px; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; pointer-events: none; transition: 0.3s; }
         .card { width: 160px; height: 230px; background: var(--parchment); color: #2a1a0a; border: 5px solid var(--bronze); border-radius: 12px; margin: 0 -15px; cursor: pointer; position: relative; transition: 0.25s; background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png'); pointer-events: auto; box-shadow: -5px 5px 15px rgba(0,0,0,0.5); }
@@ -75,6 +106,7 @@
         .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; }
         .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; }
         .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; }
+        .bg-once { background: #333; color: #aaa; border: 1px solid #aaa; }
 
         .hp-container { width: 100%; height: 22px; background: #000; border-radius: 11px; border: 2px solid var(--brass); overflow: hidden; margin: 10px 0; position: relative; }
         .hp-fill { height: 100%; width: 100%; transition: 0.4s; position: absolute; left: 0; top: 0; }
@@ -85,12 +117,7 @@
         #end-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 110px; height: 110px; border-radius: 50%; background: var(--bronze); border: 6px double var(--brass); color: #fff; font-family: 'Rye'; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; }
         #end-btn:hover { background: #b87333; transform: translateY(-50%) scale(1.05); }
 
-        /* ★ 新增：手牌計數器樣式 */
-        #hand-counter {
-            position: absolute; bottom: 20px; right: 20px;
-            font-family: 'Rye', serif; font-size: 2rem; color: var(--parchment);
-            text-shadow: 2px 2px 0 #000; z-index: 100; pointer-events: none;
-        }
+        #hand-counter { position: absolute; bottom: 20px; right: 20px; font-family: 'Rye', serif; font-size: 2rem; color: var(--parchment); text-shadow: 2px 2px 0 #000; z-index: 100; pointer-events: none; }
 
         @media (max-width: 768px) {
             body { background-position: center; background-size: cover; }
@@ -107,13 +134,22 @@
             .card-cost { width: 25px; height: 25px; font-size: 0.9rem; top: -8px; left: -8px; } .card.selected { transform: translateY(-50px) scale(1.1) !important; }
             #end-btn { width: 70px; height: 70px; right: 10px; top: auto; bottom: 240px; transform: none; font-size: 0.8rem; border-width: 3px; z-index: 50; }
             #action-log { font-size: 1.2rem; top: 35%; }
-            /* 手機版計數器位置 */
             #hand-counter { bottom: 200px; right: 10px; font-size: 1.2rem; }
+            /* 手機版牌堆顯示調整 */
+            #pile-display { bottom: 200px; left: 10px; transform: scale(0.8); transform-origin: bottom left; }
+            .victory-title { font-size: 2.5rem; }
+            #next-lvl-btn { width: 80%; right: 50%; transform: translate(50%, -50%); top: 60%; font-size: 1.5rem; }
         }
     </style>
 </head>
 <body onload="init()">
     <div id="marquee-container"><div class="marquee-content"><span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>⚠ WARNING: THE BOSS IS SO HARD ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⚠ SYSTEM ALERT: EXTREME DANGER ⚠&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div></div>
+    
+    <div id="victory-screen">
+        <div class="victory-title">WAVE COMPLETE</div>
+        <button id="next-lvl-btn" onclick="goToNextLevel()">NEXT BATTLE ➡</button>
+    </div>
+
     <div id="action-log"></div>
     <div id="battle-stage">
         <div class="round-gauge"><span style="font-size:0.7rem">ROUND</span><span id="ui-round" style="font-family:'Rye'; font-size:2.2rem; color:var(--gold)">1</span></div>
@@ -135,6 +171,17 @@
         <div id="pl-status" class="status-bar" style="margin-bottom:5px;"></div>
         <div class="hp-container"><div id="ui-pl-hp-fill" class="hp-fill" style="background: var(--success);"></div><div id="ui-pl-shield-fill" class="shield-fill"></div></div>
     </div>
+    
+    <div id="pile-display">
+        <div class="pile-box">
+            <span class="pile-label">DRAW</span>
+            <span id="ui-draw-count" class="pile-count">20</span>
+        </div>
+        <div class="pile-box">
+            <span class="pile-label">DISC</span>
+            <span id="ui-disc-count" class="pile-count">0</span>
+        </div>
+    </div>
     <div id="hand-counter">0/5</div>
     
     <button id="end-btn">END<br>TURN</button>
@@ -147,17 +194,19 @@
         let state = {
             playerHP: 100, playerMaxHP: 100, playerShield: 0, playerStr: 0,
             playerMarkers: [],
-            energy: 3, maxEnergy: 3, 
-            maxHandSize: 5, // ★ 新增：手牌上限
+            energy: 3, maxEnergy: 3, maxHandSize: 5,
             round: 1,
-            cardPool: [], enemyPool: [], waveConfig: [],
+            cardPool: [], // 原始牌庫定義
+            drawPile: [], // ★ 抽牌堆
+            discardPile: [], // ★ 棄牌堆
+            enemyPool: [], waveConfig: [],
             currentWave: [], currentEnemy: null, enemyWaveIdx: 0, selectedCard: null
         };
 
         async function init() {
             Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (res) => {
                 state.cardPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], effect: r[1], cost: parseInt(r[2])||0, row: i+2 }));
-                draw(5);
+                initDeck(); // ★ 初始化牌庫
             }});
             Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (res) => {
                 state.enemyPool = res.data.slice(1).filter(r => r[0]).map((r,i)=>({ name: r[0], hp: parseInt(r[1])||10, type: parseInt(r[2])||1, actions: [r[4], r[5], r[6], r[7], r[8], r[9]].filter(a => a && a.trim() !== ""), row: i+2 }));
@@ -166,6 +215,27 @@
                     generateWave();
                 }});
             }});
+        }
+
+        // ★ 新增：初始化並洗牌
+        function initDeck() {
+            state.drawPile = [];
+            state.discardPile = [];
+            // 為了模擬遊戲體驗，我們隨機從 pool 複製 20 張卡到 drawPile
+            for(let i=0; i<20; i++) {
+                if(state.cardPool.length > 0) {
+                    state.drawPile.push(state.cardPool[Math.floor(Math.random() * state.cardPool.length)]);
+                }
+            }
+            shuffle(state.drawPile);
+            draw(5);
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
         }
 
         function resolveVal(valStr) {
@@ -186,8 +256,10 @@
                 .replace(/{max_eng}/g, state.maxEnergy)
                 .replace(/{loss}/g, (state.playerMaxHP - state.playerHP))
                 .replace(/{hand}/g, handCount)
-                // ★ 新增：手牌上限變數
                 .replace(/{max_hand}/g, state.maxHandSize)
+                // 新增變數
+                .replace(/{draw_pile}/g, state.drawPile.length)
+                .replace(/{disc_pile}/g, state.discardPile.length)
                 
                 .replace(/{round}/g, state.round)
                 .replace(/{wave}/g, waveLeft)
@@ -213,47 +285,67 @@
 
         function spawnNext() {
             document.body.classList.remove('boss-mode');
-            if(state.enemyWaveIdx < state.currentWave.length) {
-                const raw = state.currentWave[state.enemyWaveIdx];
-                state.currentEnemy = { 
-                    ...raw, curHP: raw.hp, actionStep: 0, 
-                    poison: 0, vulnerable: 0, weak: 0, stunned: false,
-                    markers: [] 
-                };
-                state.enemyWaveIdx++;
-                const box = document.getElementById('enemy-target');
-                box.className = 'enemy-box tier-' + state.currentEnemy.type;
-                if (state.currentEnemy.type === 4) { document.body.classList.add('boss-mode'); showLog("⚠ BOSS WARNING ⚠"); if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }
-                updateUI();
-            } else { state.round++; generateWave(); }
-        }
-
-        function draw(n) {
-            const area = document.getElementById('hand-area');
             
-            // ★ 修改：手牌上限邏輯
-            const currentHandCount = area.children.length;
-            const slotsLeft = state.maxHandSize - currentHandCount;
-            const toDraw = Math.min(n, slotsLeft);
-            
-            if (toDraw <= 0 && n > 0) {
-                 showLog("HAND FULL!");
-                 return;
+            // ★ 修改：如果 wave 結束，顯示過場畫面
+            if(state.enemyWaveIdx >= state.currentWave.length) {
+                document.getElementById('victory-screen').style.display = 'flex';
+                return;
             }
 
+            const raw = state.currentWave[state.enemyWaveIdx];
+            state.currentEnemy = { 
+                ...raw, curHP: raw.hp, actionStep: 0, 
+                poison: 0, vulnerable: 0, weak: 0, stunned: false,
+                markers: [] 
+            };
+            state.enemyWaveIdx++;
+            const box = document.getElementById('enemy-target');
+            box.className = 'enemy-box tier-' + state.currentEnemy.type;
+            if (state.currentEnemy.type === 4) { document.body.classList.add('boss-mode'); showLog("⚠ BOSS WARNING ⚠"); if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }
+            updateUI();
+        }
+
+        // ★ 新增：按鈕觸發下一關
+        function goToNextLevel() {
+            document.getElementById('victory-screen').style.display = 'none';
+            state.round++;
+            generateWave();
+        }
+
+        // ★ 修改：從 drawPile 抽牌
+        function draw(n) {
+            const area = document.getElementById('hand-area');
+            const currentHandCount = area.children.length;
+            const slotsLeft = state.maxHandSize - currentHandCount;
+            let toDraw = Math.min(n, slotsLeft);
+            
+            if (toDraw <= 0 && n > 0) { showLog("HAND FULL!"); return; }
+
             for(let i=0; i<toDraw; i++){
-                const d = state.cardPool[Math.floor(Math.random()*state.cardPool.length)];
-                if(!d) continue;
+                // 檢查抽牌堆，如果空了就洗牌
+                if(state.drawPile.length === 0) {
+                    if(state.discardPile.length > 0) {
+                        state.drawPile = [...state.discardPile];
+                        state.discardPile = [];
+                        shuffle(state.drawPile);
+                        showLog("SHUFFLE");
+                    } else {
+                        showLog("NO CARDS");
+                        break;
+                    }
+                }
+                
+                const d = state.drawPile.pop(); // 取出一張
+                
                 const el = document.createElement('div');
                 el.className = 'card';
                 let niceDesc = d.effect;
+                niceDesc = niceDesc.replace(/\[#once\]/g, '<span class="tag-badge bg-once">ONCE</span>');
                 niceDesc = niceDesc.replace(/\[#mark\s+(.*?)\]/g, '<span class="tag-badge bg-mark">$1</span>');
                 niceDesc = niceDesc.replace(/\[#req\s+(.*?)\]/g, '<span class="tag-badge bg-req">REQ: $1</span>');
                 niceDesc = niceDesc.replace(/\[#reqme\s+(.*?)\]/g, '<span class="tag-badge bg-req">NEED: $1</span>');
                 niceDesc = niceDesc.replace(/\[#unmark\s+(.*?)\]/g, '<span class="tag-badge bg-draw">CLR: $1</span>');
-                // ★ 新增：手牌上限 Tag 視覺
                 niceDesc = niceDesc.replace(/\[#hand_limit\s+(.*?)\]/g, '<span class="tag-badge bg-draw">HAND MAX $1</span>');
-                
                 niceDesc = niceDesc.replace(/\[#dmg\s+(.*?)\]/g, '<span class="tag-badge bg-dmg">DMG $1</span>');
                 niceDesc = niceDesc.replace(/\[#def\s+(.*?)\]/g, '<span class="tag-badge bg-def">DEF $1</span>');
                 niceDesc = niceDesc.replace(/\[#heal\s+(.*?)\]/g, '<span class="tag-badge bg-heal">HEAL $1</span>');
@@ -279,7 +371,7 @@
                 };
                 area.appendChild(el);
             }
-            updateUI(); // 畫完牌更新計數器
+            updateUI();
         }
 
         function select(el, d) {
@@ -331,13 +423,7 @@
                 const rawVal = m[2]; 
                 const val = resolveVal(rawVal); 
 
-                // ★ 新增：調整手牌上限
-                if(tag === 'hand_limit') {
-                    state.maxHandSize += val;
-                    state.maxHandSize = Math.max(0, state.maxHandSize); // 防止負數
-                    showLog(`HAND LIMIT ${val > 0 ? '+' : ''}${val}`);
-                }
-
+                if(tag === 'hand_limit') { state.maxHandSize = Math.max(0, state.maxHandSize + val); showLog(`HAND LIMIT ${val > 0 ? '+' : ''}${val}`); }
                 if(tag === 'mark') {
                     const markerName = rawVal.trim();
                     if(target === 'enemy') { state.currentEnemy.markers.push(markerName); showLog(`MARKED: ${markerName}`); }
@@ -345,13 +431,8 @@
                 }
                 if(tag === 'unmark') {
                     const markerName = rawVal.trim();
-                    if(target === 'enemy') {
-                        const idx = state.currentEnemy.markers.indexOf(markerName);
-                        if(idx > -1) { state.currentEnemy.markers.splice(idx, 1); showLog(`CLEARED: ${markerName}`); }
-                    } else {
-                        const idx = state.playerMarkers.indexOf(markerName);
-                        if(idx > -1) { state.playerMarkers.splice(idx, 1); showLog(`CLEARED: ${markerName}`); }
-                    }
+                    if(target === 'enemy') { const idx = state.currentEnemy.markers.indexOf(markerName); if(idx > -1) { state.currentEnemy.markers.splice(idx, 1); showLog(`CLEARED: ${markerName}`); }} 
+                    else { const idx = state.playerMarkers.indexOf(markerName); if(idx > -1) { state.playerMarkers.splice(idx, 1); showLog(`CLEARED: ${markerName}`); }}
                 }
 
                 if(tag === 'dmg' && target === 'enemy') damageEnemy(val);
@@ -369,6 +450,15 @@
                 if(tag === 'draw') { draw(val); showLog(`DRAW ${val}`); }
                 if(tag === 'sdmg') { state.playerHP -= val; showLog(`SACRIFICE: ${val}`); }
             }
+
+            // ★ 修改：處理棄牌與一次性卡牌邏輯
+            if (d.effect.includes('[#once]')) {
+                showLog("BANISHED");
+                // 不放入 discardPile，相當於移除
+            } else {
+                state.discardPile.push(d);
+            }
+
             state.selectedCard.el.remove();
             cancel();
             checkWin();
@@ -383,12 +473,7 @@
             return dmg;
         }
         function healPlayer(amt) { state.playerHP = Math.min(state.playerMaxHP, state.playerHP + amt); showLog(`HEAL: ${amt}`); }
-        function enemyHeal(amt) { 
-            state.currentEnemy.curHP = Math.min(state.currentEnemy.hp, state.currentEnemy.curHP + amt); 
-            showLog(`ENEMY HEAL: ${amt}`); 
-            visualFlash('enemy-target', 'pure');
-        }
-
+        function enemyHeal(amt) { state.currentEnemy.curHP = Math.min(state.currentEnemy.hp, state.currentEnemy.curHP + amt); showLog(`ENEMY HEAL: ${amt}`); visualFlash('enemy-target', 'pure'); }
         function checkWin() { if(state.currentEnemy && state.currentEnemy.curHP <= 0) spawnNext(); }
         function playerTakeDamage(amt) {
             let incoming = amt;
@@ -430,16 +515,8 @@
                 const val = resolveVal(rawVal);
                 if(tag === 'dmg') playerTakeDamage(val);
                 if(tag === 'heal') enemyHeal(val);
-                if(tag === 'mark') {
-                    const markerName = rawVal.trim();
-                    state.playerMarkers.push(markerName);
-                    showLog(`ENEMY MARKED: ${markerName}`);
-                }
-                if(tag === 'unmark') {
-                     const markerName = rawVal.trim();
-                     const idx = state.playerMarkers.indexOf(markerName);
-                     if(idx > -1) { state.playerMarkers.splice(idx, 1); showLog(`UNMARKED: ${markerName}`); }
-                }
+                if(tag === 'mark') { state.playerMarkers.push(rawVal.trim()); showLog(`ENEMY MARKED: ${rawVal.trim()}`); }
+                if(tag === 'unmark') { const idx = state.playerMarkers.indexOf(rawVal.trim()); if(idx > -1) { state.playerMarkers.splice(idx, 1); showLog(`UNMARKED: ${rawVal.trim()}`); }}
             }
             state.currentEnemy.actionStep++;
         }
@@ -466,9 +543,12 @@
         }
 
         function updateUI() {
-            // ★ 新增：更新手牌計數器
             const handCount = document.querySelectorAll('#hand-area .card').length;
             document.getElementById('hand-counter').innerText = `${handCount}/${state.maxHandSize}`;
+            
+            // ★ 新增：更新抽牌堆與棄牌堆顯示
+            document.getElementById('ui-draw-count').innerText = state.drawPile.length;
+            document.getElementById('ui-disc-count').innerText = state.discardPile.length;
 
             if(state.currentEnemy) {
                 document.getElementById('ui-en-name').innerText = state.currentEnemy.name;
@@ -479,12 +559,7 @@
                 
                 const sBar = document.getElementById('en-status'); sBar.innerHTML = '';
                 const groupedEn = getGroupedMarkers(state.currentEnemy.markers);
-                groupedEn.forEach(item => {
-                   const cls = 'marker-' + item.name.toLowerCase(); 
-                   const countStr = item.count > 1 ? ` x${item.count}` : '';
-                   sBar.innerHTML += `<div class="status-text ${cls}">${item.name}${countStr}</div>`;
-                });
-                
+                groupedEn.forEach(item => { const cls = 'marker-' + item.name.toLowerCase(); const countStr = item.count > 1 ? ` x${item.count}` : ''; sBar.innerHTML += `<div class="status-text ${cls}">${item.name}${countStr}</div>`; });
                 const addIcon = (txt, cls) => sBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
                 if(state.currentEnemy.poison > 0) addIcon(`☠ ${state.currentEnemy.poison}`, 'st-poison');
                 if(state.currentEnemy.vulnerable > 0) addIcon(`💔 ${state.currentEnemy.vulnerable}`, 'st-vuln');
@@ -503,12 +578,7 @@
             
             const pBar = document.getElementById('pl-status'); pBar.innerHTML = '';
             const groupedPl = getGroupedMarkers(state.playerMarkers);
-            groupedPl.forEach(item => {
-                const cls = 'marker-' + item.name.toLowerCase(); 
-                const countStr = item.count > 1 ? ` x${item.count}` : '';
-                pBar.innerHTML += `<div class="status-text ${cls}">${item.name}${countStr}</div>`;
-            });
-
+            groupedPl.forEach(item => { const cls = 'marker-' + item.name.toLowerCase(); const countStr = item.count > 1 ? ` x${item.count}` : ''; pBar.innerHTML += `<div class="status-text ${cls}">${item.name}${countStr}</div>`; });
             const addPIcon = (txt, cls) => pBar.innerHTML += `<div class="status-icon ${cls}">${txt}</div>`;
             if(state.playerShield > 0) addPIcon(`🛡 ${state.playerShield}`, 'st-shield');
             if(state.playerStr > 0) addPIcon(`💪 ${state.playerStr}`, 'st-str');

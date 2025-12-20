@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.8 - Visuals</title>
+    <title>Steampunk Duelist v10.9 - Enemy Add Card Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -125,7 +125,6 @@
         }
         #player-box:hover { background: rgba(255,255,255,0.05); }
 
-        /* 狀態 */
         .status-row { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; margin: 8px 0; align-items: center; }
         .status-badge {
             display: inline-flex; align-items: center; justify-content: center;
@@ -172,10 +171,9 @@
         .card:hover { transform: translateY(-50px) scale(1.1) !important; z-index: 100; margin: 0 5px; }
         .card.selected { transform: translateY(-80px) scale(1.15) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
         
-        /* ★ 暫時性卡牌視覺特效 */
         .card.temp-card {
-            border: 3px dashed var(--steam-blue); /* 青色虛線 */
-            background: linear-gradient(135deg, #eaddcf 0%, #cceeff 100%); /* 微藍漸層 */
+            border: 3px dashed var(--steam-blue);
+            background: linear-gradient(135deg, #eaddcf 0%, #cceeff 100%);
             box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
         }
         .card.temp-card .card-name { color: #005566; }
@@ -187,7 +185,7 @@
 
         .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.7rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
         .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; } .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; } .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; } .bg-once { background: #333; color: #aaa; border: 1px solid #aaa; }
-        .bg-temp { background: #0088aa; border: 1px dashed #fff; }
+        .bg-en-add { background: #5500aa; border: 1px solid #f0f; } /* 敵人塞牌標籤色 */
 
         #piles-ui { position: absolute; bottom: 10px; left: 20px; display: flex; gap: 15px; z-index: 50; }
         .pile-btn { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; cursor: pointer; transition: 0.2s; }
@@ -366,14 +364,15 @@
             update();
         }
 
-        // ★ 新增：產生暫時卡牌到手牌
+        // ★ 新增：產生暫時卡牌 (ID對應)
         function addTempCard(rowId) {
             const target = state.lib.find(c => c.row == rowId);
             if(target) {
                 if(state.hand.length >= state.maxHand) { log("HAND FULL"); return; }
-                const tempCard = { ...target, isTemp: true }; // 標記為暫時
+                const tempCard = { ...target, isTemp: true };
                 state.hand.push(tempCard);
-                log("ADDED CARD");
+                log("JUNK ADDED");
+                visualFlash('player-box', 'dmg'); // 視覺提示
                 renderHand(); update();
             }
         }
@@ -401,7 +400,7 @@
                 if(t==='draw') { drawCard(val); log(`DRAW ${val}`); }
                 if(t==='hand_limit') { state.maxHand=Math.max(0,state.maxHand+val); log(`HAND MAX ${val>0?'+':''}${val}`); }
                 
-                // ★ 新增：add_card 標籤
+                // 玩家也可以用 add_card
                 if(t==='add_card') { addTempCard(parseInt(vRaw)); }
 
                 if(t==='mark') { const n=vRaw.trim(); if(state.sel.target==='en'){ state.curEn.marks.push(n); }else{ state.pMarks.push(n); } log(`MARK: ${n}`); }
@@ -418,7 +417,7 @@
             }
             state.hand.splice(idx, 1);
             
-            // 暫時卡牌或一次性卡牌直接 banish
+            // 暫時卡/一次性卡 直接移除
             if(c.eff.includes('[#once]') || c.isTemp) log("BANISHED"); else state.disc.push(c);
             
             cancelSel(); checkWin(); update(); renderHand();
@@ -503,7 +502,7 @@
         document.getElementById('end-btn').onclick = () => {
             if(!state.curEn) return;
             
-            // ★ 回合結束：丟棄普通牌，移除暫時牌
+            // ★ 回合結束：棄掉普通牌，移除暫時牌
             state.hand.forEach(c => {
                 if(!c.isTemp) state.disc.push(c);
             });
@@ -524,7 +523,6 @@
             newTurn();
         };
 
-        // 敵人行動核心 (獨立)
         function calculateEnemyDmgToPlayer(baseVal) {
             let inc = baseVal + (state.curEn.str||0); 
             if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
@@ -574,8 +572,8 @@
                 if(t==='def') { state.curEn.shd = (state.curEn.shd||0) + val; log(`EN SHIELD ${val}`); } 
                 if(t==='str') { state.curEn.str = (state.curEn.str||0) + val; log(`EN STR ${val}`); }
                 
-                // ★ 敵人給玩家暫時卡牌
-                if(t==='add_card') { addTempCard(parseInt(vRaw)); }
+                // ★ 敵人塞牌 (en_add_card)
+                if(t==='en_add_card') { addTempCard(parseInt(vRaw)); }
 
                 if(t==='mark') { state.pMarks.push(vRaw.trim()); log(`MARKED: ${vRaw.trim()}`); }
                 if(t==='unmark') { const i=state.pMarks.indexOf(vRaw.trim()); if(i>-1) state.pMarks.splice(i,1); }
@@ -679,6 +677,7 @@
                 if(k==='reqme') return `<span class="tag-badge bg-req">NEED ${v}</span>`;
                 if(k==='once') return `<span class="tag-badge bg-once">ONCE</span>`;
                 if(k==='add_card') return `<span class="tag-badge bg-add">ADD #${v}</span>`;
+                if(k==='en_add_card') return `<span class="tag-badge bg-en-add">GIVE #${v}</span>`;
                 return `<span class="tag-badge bg-eng">${k.toUpperCase()} ${v}</span>`;
             });
         }

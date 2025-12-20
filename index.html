@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v10.9 - Enemy Add Card Fix</title>
+    <title>Steampunk Duelist v11.0 - Unified Logic</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -14,225 +14,102 @@
             --str: #ff9900; --vuln: #ff0066; --weak: #99cc00;
             --boss-purple: #b300ff; --boss-red-bg: #500000;
         }
-
         * { box-sizing: border-box; }
-
         body {
-            margin: 0; padding: 0; background: #120f0d;
-            color: var(--parchment); font-family: 'IM Fell English SC', "微軟正黑體", sans-serif;
+            margin: 0; padding: 0; background: #120f0d; color: var(--parchment);
+            font-family: 'IM Fell English SC', "微軟正黑體", sans-serif;
             overflow: hidden; height: 100vh; width: 100vw; user-select: none;
             background-image: radial-gradient(circle, #2a221b 0%, #120f0d 100%);
-            transition: background-image 1s ease-in-out; touch-action: manipulation;
-            display: flex; flex-direction: column;
+            transition: background-image 1s ease-in-out; display: flex; flex-direction: column;
         }
+        body.boss-mode { background-image: radial-gradient(circle, #600 0%, var(--boss-red-bg) 90%) !important; }
 
-        body.boss-mode { background-image: radial-gradient(circle, #800 0%, var(--boss-red-bg) 90%) !important; }
-
-        #marquee-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 30px;
-            background: var(--danger); border-bottom: 2px solid var(--gold);
-            color: #fff; overflow: hidden; z-index: 200; display: none;
-        }
+        /* UI Components */
+        #marquee-container { position: absolute; top: 0; width: 100%; height: 30px; background: var(--danger); border-bottom: 2px solid var(--gold); color: #fff; overflow: hidden; z-index: 200; display: none; }
         body.boss-mode #marquee-container { display: block; }
-        .marquee-content { display: flex; width: fit-content; animation: marquee-scroll 10s linear infinite; }
+        .marquee-content { display: flex; width: fit-content; animation: scroll 10s linear infinite; }
+        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
-        @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* 遮罩 */
-        .overlay-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 10000;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-        #pile-viewer-content {
-            display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;
-            max-width: 90%; max-height: 80vh; overflow-y: auto; padding: 20px;
-        }
-        .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; text-shadow: 0 0 10px #000; }
-        .close-tip { color: #888; font-size: 0.8rem; margin-top: 10px; }
-
-        /* 過場 */
-        .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; text-align: center;}
-        .victory-subtitle { font-size: 1rem; color: #888; margin-bottom: 30px; letter-spacing: 2px; }
-        #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
-        .reward-btn {
-            width: 220px; height: 280px; background: #222; border: 4px double var(--bronze); border-radius: 10px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; transition: 0.3s; padding: 15px; text-align: center; color: var(--parchment);
-        }
-        .reward-btn:hover { transform: translateY(-10px); border-color: var(--steam-blue); box-shadow: 0 0 20px var(--steam-blue); background: #2a2a2a; }
-        .reward-icon { font-size: 4rem; margin-bottom: 20px; }
-        .reward-name { font-family: 'Rye'; font-size: 1.5rem; margin-bottom: 10px; color: var(--gold); }
-        .reward-desc { font-size: 0.9rem; color: #aaa; }
-        .warning-text { color: var(--danger); font-size: 0.9rem; margin-top: 20px; border: 1px solid var(--danger); padding: 5px 15px; border-radius: 5px; background: rgba(255, 0, 0, 0.1); }
-        #next-lvl-btn {
-            padding: 15px 50px; font-size: 2rem; font-family: 'Rye'; background: var(--steam-blue); color: #000; 
-            border: 5px solid #fff; border-radius: 10px; cursor: pointer; box-shadow: 0 0 30px var(--steam-blue);
-            animation: pulse-btn 1s infinite alternate; display: none; margin-top: 30px;
-        }
-        @keyframes pulse-btn { from { transform: scale(1); } to { transform: scale(1.05); } }
-
-        /* 頂部 */
-        #top-bar {
-            width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center;
-            padding: 0 20px; z-index: 100; pointer-events: none; margin-top: 30px;
-        }
+        #top-bar { width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 100; margin-top: 30px; pointer-events: none; }
         .dashboard-group { display: flex; gap: 15px; pointer-events: auto; }
-        .gauge-circle {
-            width: 70px; height: 70px; border: 3px solid var(--brass); border-radius: 50%;
-            background: radial-gradient(circle, var(--leather), #111);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        }
-        .gauge-label { font-size: 0.6rem; color: #888; }
+        .gauge-circle { width: 70px; height: 70px; border: 3px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .gauge-val { font-family: 'Rye'; font-size: 1.5rem; color: var(--steam-blue); }
-        .round-box {
-            width: 60px; height: 70px; background: var(--leather); border: 3px double var(--brass);
-            border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
+        .round-box { width: 60px; height: 70px; background: var(--leather); border: 3px double var(--brass); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-        /* 戰鬥 */
-        #battle-area {
-            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            padding-top: 20px; gap: 15px; position: relative; width: 100%;
-        }
-
-        .enemy-box { 
-            width: 360px; background: #222; border: 6px ridge var(--bronze); 
-            padding: 20px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; 
-            display: flex; flex-direction: column; gap: 5px;
-        }
+        #battle-area { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px; width: 100%; }
+        
+        .enemy-box { width: 360px; background: #222; border: 6px ridge var(--bronze); padding: 20px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; gap: 5px; }
         .enemy-box.stunned { filter: grayscale(100%) brightness(0.7); border-color: #555 !important; }
-        .tier-1 { border-color: #cd7f32 !important; }
-        .tier-2 { border-color: #c0c0c0 !important; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
-        .tier-3 { border-color: #ffd700 !important; box-shadow: 0 0 35px rgba(255,215,0,0.5); }
-        .tier-4 { 
-            border-color: var(--boss-purple) !important; 
-            box-shadow: 0 0 60px var(--boss-purple), inset 0 0 20px var(--boss-purple); 
-            animation: boss-pulse 0.8s infinite alternate ease-in-out; 
-        }
-        @keyframes boss-pulse { 
-            from { transform: scale(1); box-shadow: 0 0 40px var(--boss-purple); } 
-            to { transform: scale(1.02); box-shadow: 0 0 80px var(--boss-purple), 0 0 20px #fff; } 
-        }
+        .tier-1 { border-color: #cd7f32 !important; } .tier-2 { border-color: #c0c0c0 !important; } .tier-3 { border-color: #ffd700 !important; }
+        .tier-4 { border-color: var(--boss-purple) !important; box-shadow: 0 0 60px var(--boss-purple); animation: boss-pulse 0.8s infinite alternate ease-in-out; }
+        @keyframes boss-pulse { from { transform: scale(1); box-shadow: 0 0 40px var(--boss-purple); } to { transform: scale(1.02); box-shadow: 0 0 80px var(--boss-purple), 0 0 20px #fff; } }
+        
         .target-active { outline: 3px solid var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); }
 
-        #player-box {
-            width: 400px; max-width: 90%;
-            padding: 10px; border-radius: 10px; transition: 0.2s; cursor: pointer;
-            background: rgba(0,0,0,0.3); border: 1px solid transparent;
-        }
+        #player-box { width: 400px; max-width: 90%; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s; }
         #player-box:hover { background: rgba(255,255,255,0.05); }
 
-        .status-row { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; margin: 8px 0; align-items: center; }
-        .status-badge {
-            display: inline-flex; align-items: center; justify-content: center;
-            padding: 3px 8px; border-radius: 4px;
-            font-size: 0.9rem; font-weight: bold; font-family: "微軟正黑體", sans-serif;
-            color: #fff; text-shadow: 1px 1px 0 #000;
-            border: 1px solid rgba(255,255,255,0.5);
-            background: #444; box-shadow: 1px 1px 3px #000;
-        }
-        .st-poison { background: var(--poison); border-color: #d0d; }
-        .st-shield { background: var(--shield); border-color: #aaf; }
-        .st-str    { background: var(--str); border-color: #fc0; }
-        .st-vuln   { background: var(--vuln); border-color: #f99; }
-        .st-weak   { background: var(--weak); color: #fff; border-color: #df0; }
-        .st-stun   { background: #555; border: 2px dashed #fff; }
-        .st-mark   { background: #333; color: #ffd700; border-color: var(--bronze); }
-
-        .hp-bar-frame {
-            width: 100%; height: 20px; background: #111; border: 2px solid var(--brass);
-            border-radius: 10px; overflow: hidden; position: relative; margin-top: 5px;
-        }
+        .hp-bar-frame { width: 100%; height: 20px; background: #111; border: 2px solid var(--brass); border-radius: 10px; overflow: hidden; position: relative; margin-top: 5px; }
         .hp-fill { height: 100%; width: 100%; position: absolute; left: 0; top: 0; transition: 0.4s; }
         .shield-fill { height: 100%; width: 0%; background: var(--shield); opacity: 0.6; position: absolute; left: 0; top: 0; transition: 0.4s; z-index: 2; }
 
-        /* 操作區 */
-        #action-area {
-            height: 240px; width: 100%; position: relative;
-            display: flex; justify-content: center; align-items: flex-end;
-            padding-bottom: 10px;
-        }
+        .status-row { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; margin: 8px 0; align-items: center; }
+        .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 4px; font-size: 0.9rem; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000; border: 1px solid rgba(255,255,255,0.5); background: #444; box-shadow: 1px 1px 3px #000; }
+        .st-poison { background: var(--poison); border-color: #d0d; } .st-shield { background: var(--shield); border-color: #aaf; }
+        .st-str { background: var(--str); border-color: #fc0; } .st-vuln { background: var(--vuln); border-color: #f99; }
+        .st-weak { background: var(--weak); color: #fff; border-color: #df0; } .st-stun { background: #555; border: 2px dashed #fff; }
+        .st-mark { background: #333; color: #ffd700; border-color: var(--bronze); }
 
-        #hand-container {
-            width: 100%; height: 100%; display: flex; justify-content: center; align-items: flex-end;
-            perspective: 1000px; padding-bottom: 20px; overflow: visible;
-        }
-
-        .card { 
-            width: 130px; height: 190px; background: var(--parchment); color: #2a1a0a; 
-            border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -12px; 
-            cursor: pointer; position: relative; transition: 0.25s; flex-shrink: 0;
-            background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
-            box-shadow: -5px 5px 15px rgba(0,0,0,0.5); transform-origin: center bottom;
-        }
+        #action-area { height: 240px; width: 100%; position: relative; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; }
+        #hand-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: flex-end; perspective: 1000px; padding-bottom: 20px; }
+        
+        .card { width: 130px; height: 190px; background: var(--parchment); color: #2a1a0a; border: 4px solid var(--bronze); border-radius: 10px; margin: 0 -12px; cursor: pointer; position: relative; transition: 0.2s; flex-shrink: 0; background-image: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png'); box-shadow: -5px 5px 15px rgba(0,0,0,0.5); transform-origin: center bottom; }
         .card:hover { transform: translateY(-50px) scale(1.1) !important; z-index: 100; margin: 0 5px; }
         .card.selected { transform: translateY(-80px) scale(1.15) !important; border-color: var(--steam-blue); box-shadow: 0 0 30px var(--steam-blue); z-index: 200; }
-        
-        .card.temp-card {
-            border: 3px dashed var(--steam-blue);
-            background: linear-gradient(135deg, #eaddcf 0%, #cceeff 100%);
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
-        }
-        .card.temp-card .card-name { color: #005566; }
-
-        .card-cost { position: absolute; top: -12px; left: -12px; width: 32px; height: 32px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem; z-index: 2; }
-        .card-name { padding:10px 2px; text-align:center; font-family:'Rye'; font-size:0.9rem; border-bottom:2px solid #aaa; line-height: 1.1; font-weight: bold; }
-        .card-desc { margin-top: 15px; text-align: center; font-size: 0.75rem; color: #421; padding: 0 8px; line-height: 1.3; font-weight: bold;}
-        .card-row-id { position: absolute; bottom: 4px; left: 6px; font-size: 0.6rem; color: #888; font-family: sans-serif; opacity: 0.7; }
+        .card.temp-card { border: 3px dashed var(--steam-blue); background: linear-gradient(135deg, #eaddcf, #cceeff); }
+        .card-name { padding:10px 2px; text-align:center; font-family:'Rye'; font-size:0.9rem; font-weight:bold; border-bottom:2px solid #aaa; }
+        .card-desc { margin-top: 15px; text-align: center; font-size: 0.75rem; color: #421; padding: 0 8px; font-weight: bold; }
+        .card-cost { position: absolute; top: -12px; left: -12px; width: 32px; height: 32px; background: #222; color: var(--steam-blue); border: 2px solid var(--steam-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Rye'; font-size: 1.2rem; }
+        .card-row-id { position: absolute; bottom: 4px; left: 6px; font-size: 0.6rem; color: #888; }
 
         .tag-badge { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 0.7rem; margin: 1px; color: #fff; text-shadow: 1px 1px 0 #000; }
-        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-psn { background: #8800cc; } .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-sdmg { background: #550000; border: 1px dashed #f00; } .bg-str { background: #ff9900; } .bg-weak { background: #88cc00; color: #000; text-shadow: none; } .bg-vuln { background: #ff0055; } .bg-stun { background: #333; border: 1px double #fff; } .bg-drain { background: #aa0044; } .bg-pure { background: #fff; color: #000; text-shadow: none; border: 1px solid #000; } .bg-maxhp { background: #228822; border: 1px solid #aaffaa; } .bg-mark { background: #444; border: 1px solid #fff; } .bg-req { background: #000; color: #f00; border: 1px solid #f00; } .bg-once { background: #333; color: #aaa; border: 1px solid #aaa; }
-        .bg-en-add { background: #5500aa; border: 1px solid #f0f; } /* 敵人塞牌標籤色 */
+        .bg-dmg { background: #aa4444; } .bg-def { background: #0088cc; } .bg-heal { background: #44aa44; } .bg-mark { background: #444; border: 1px solid #fff; }
+        .bg-eng { background: #ccaa00; } .bg-draw { background: #555; } .bg-add { background: #00aaaa; } .bg-en-add { background: #5500aa; }
 
         #piles-ui { position: absolute; bottom: 10px; left: 20px; display: flex; gap: 15px; z-index: 50; }
-        .pile-btn { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; cursor: pointer; transition: 0.2s; }
-        .pile-btn:hover { background: #333; border-color: #fff; }
-        .pile-lbl { font-size: 0.6rem; color: #888; margin-bottom: 5px; } .pile-num { font-family: 'Rye'; font-size: 1.5rem; color: #fff; }
+        .pile-btn { width: 60px; height: 80px; background: #222; border: 2px solid var(--brass); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 5px; box-shadow: 0 5px 10px #000; cursor: pointer; }
+        .pile-btn:hover { border-color: #fff; }
+        .pile-num { font-family: 'Rye'; font-size: 1.5rem; color: #fff; }
 
         #controls-ui { position: absolute; right: 20px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 50; }
         #hand-count { font-family: 'Rye'; font-size: 1.5rem; color: #888; text-shadow: 1px 1px 0 #000; }
-        #end-btn { width: 90px; height: 90px; border-radius: 50%; background: var(--bronze); border: 5px double var(--brass); color: #fff; font-family: 'Rye'; font-size: 1.2rem; cursor: pointer; box-shadow: 0 5px 15px #000; transition: 0.2s; }
+        #end-btn { width: 90px; height: 90px; border-radius: 50%; background: var(--bronze); border: 5px double var(--brass); color: #fff; font-family: 'Rye'; font-size: 1.2rem; cursor: pointer; box-shadow: 0 5px 15px #000; }
         #end-btn:hover { transform: scale(1.05); background: #c57d3e; }
 
         #action-log { position: absolute; top: 40%; width: 100%; text-align: center; font-family: 'Rye'; font-size: 2rem; color: #fff; text-shadow: 0 0 10px #000; pointer-events: none; z-index: 500; transition: 0.3s; opacity: 0; }
 
-        /* RWD */
-        @media (min-width: 769px) and (max-width: 1366px) {
-            #battle-area { padding-top: 60px; }
-            .enemy-box { width: 320px; padding: 10px; }
-            #player-box { width: 320px; }
-            .card { width: 110px; height: 160px; }
-            #end-btn { width: 80px; height: 80px; font-size: 1rem; }
-        }
+        /* Overlays */
+        .overlay-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .victory-title { font-family: 'Rye'; font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 20px var(--brass); margin-bottom: 20px; }
+        #reward-options { display: flex; gap: 30px; margin-bottom: 20px; }
+        .reward-btn { width: 220px; height: 280px; background: #222; border: 4px double var(--bronze); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: var(--parchment); }
+        .reward-btn:hover { border-color: var(--steam-blue); transform: translateY(-5px); }
+        .reward-icon { font-size: 4rem; margin-bottom: 20px; }
+        .reward-name { font-family: 'Rye'; font-size: 1.5rem; color: var(--gold); margin-bottom: 10px; }
+        
+        #pile-viewer-content { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 90%; max-height: 80vh; overflow-y: auto; padding: 20px; }
+        .viewer-title { font-family: 'Rye'; font-size: 2.5rem; color: var(--gold); margin-bottom: 20px; }
 
         @media (max-width: 768px) {
-            body { background-position: center; background-size: cover; }
-            .marquee-content span { font-size: 1rem; line-height: 35px; }
-            .dashboard-group { gap: 8px; margin-left: 5px; }
-            .gauge-circle { width: 50px; height: 50px; border-width: 2px; }
-            .gauge-val { font-size: 1rem; }
-            .round-box { width: 45px; height: 55px; margin-right: 5px; }
-
-            #battle-area { padding-top: 50px; gap: 10px; justify-content: flex-start; }
-            .enemy-box { width: 90%; padding: 10px; margin-top: 0; }
-            #player-box { width: 90%; margin-top: 5px; }
-            
+            #battle-area { padding-top: 50px; }
+            .enemy-box, #player-box { width: 90%; margin-top: 5px; }
             #hand-area { height: 180px; bottom: 40px; }
             .card { width: 90px; height: 130px; margin: 0 -10px; }
-            .card-name { font-size: 0.6rem; padding: 5px 0; }
-            .card-desc { font-size: 0.5rem; margin-top: 5px; padding: 0 2px; }
-            .card-cost { width: 22px; height: 22px; font-size: 0.9rem; top: -8px; left: -8px; }
-
             #end-btn { width: 70px; height: 70px; font-size: 0.8rem; }
-            #piles-ui { bottom: 130px; left: 10px; flex-direction: column; gap: 5px; } 
-            .pile-btn { width: 40px; height: 50px; }
-            #controls-ui { bottom: 90px; right: 20px; }
-            #hand-counter { font-size: 1rem; }
-            
-            .reward-btn { width: 100%; height: 80px; flex-direction: row; padding: 10px; gap: 20px; justify-content: flex-start; }
+            #piles-ui { bottom: 130px; }
+            #controls-ui { bottom: 90px; }
+            .reward-btn { width: 100%; height: 80px; flex-direction: row; gap: 20px; }
             .reward-icon { font-size: 2rem; margin: 0; } .reward-name { font-size: 1.2rem; margin: 0; } .reward-desc { display: none; }
         }
     </style>
@@ -279,16 +156,10 @@
 
     <div id="action-area">
         <div id="piles-ui">
-            <div class="pile-btn" onclick="showPile('DRAW PILE', state.draw)">
-                <span class="pile-lbl">DRAW</span><span id="ui-draw-n" class="pile-num">0</span>
-            </div>
-            <div class="pile-btn" onclick="showPile('DISCARD', state.disc)">
-                <span class="pile-lbl">DISC</span><span id="ui-disc-n" class="pile-num">0</span>
-            </div>
+            <div class="pile-btn" onclick="showPile('DRAW PILE', state.draw)"><span class="pile-lbl">DRAW</span><span id="ui-draw-n" class="pile-num">0</span></div>
+            <div class="pile-btn" onclick="showPile('DISCARD', state.disc)"><span class="pile-lbl">DISC</span><span id="ui-disc-n" class="pile-num">0</span></div>
         </div>
-
         <div id="hand-container"></div>
-
         <div id="controls-ui">
             <div id="hand-counter">0/5</div>
             <button id="end-btn">END</button>
@@ -297,13 +168,11 @@
 
     <div id="victory-screen" class="overlay-screen">
         <div class="victory-title">WAVE COMPLETE</div>
-        <div class="victory-subtitle">CHOOSE YOUR REWARD</div>
         <div id="reward-options">
             <div class="reward-btn" onclick="showRemoveCardUI()"><div class="reward-icon">🔥</div><div class="reward-name">PURGE</div><div class="reward-desc">Remove 1 card</div></div>
             <div class="reward-btn" onclick="showAddCardUI()"><div class="reward-icon">🃏</div><div class="reward-name">DRAFT</div><div class="reward-desc">Add 1 card</div></div>
             <div class="reward-btn" onclick="chooseHeal()"><div class="reward-icon">❤</div><div class="reward-name">REST</div><div class="reward-desc">Heal 15%</div></div>
         </div>
-        <div class="warning-text">⚠ SELECTION CANNOT BE CANCELLED. ⚠</div>
         <button id="next-lvl-btn" onclick="goToNextLevel()">NEXT BATTLE ➡</button>
     </div>
 
@@ -318,384 +187,225 @@
         const GID_CARD = "0"; const GID_ENEMY = "322780304"; const GID_CONFIG = "1319509950";
 
         let state = {
-            pHP: 100, pMaxHP: 100, pShd: 0, pStr: 0, pMarks: [],
-            pPsn: 0, pVuln: 0, pWeak: 0,
-            eng: 3, maxEng: 3, maxHand: 5, round: 1,
-            lib: [], deck: [], draw: [], disc: [], hand: [],
-            enPool: [], waves: [], curWave: [], curEn: null, wIdx: 0,
-            sel: null, mode: 'battle', isRewardMode: false
+            pHP:100, pMaxHP:100, pShd:0, pStr:0, pMarks:[], pPsn:0, pVuln:0, pWeak:0,
+            eng:3, maxEng:3, maxHand:5, round:1,
+            lib:[], deck:[], draw:[], disc:[], hand:[],
+            enPool:[], waves:[], curWave:[], curEn:null, wIdx:0,
+            sel:null, mode:'battle', isRewardMode:false
         };
 
         async function init() {
-            Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download: true, header: false, complete: (r) => {
+            Papa.parse(`${BASE_URL}&gid=${GID_CARD}`, { download:true, header:false, complete:(r)=>{
                 state.lib = r.data.slice(1).filter(d=>d[0]).map((d,i)=>({name:d[0], eff:d[1], cost:parseInt(d[2])||0, id:i+2, row:i+2}));
                 state.deck = []; state.lib.slice(0,5).forEach(c=>{ state.deck.push({...c}); state.deck.push({...c}); });
                 initBattle();
             }});
-            Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download: true, header: false, complete: (r) => {
+            Papa.parse(`${BASE_URL}&gid=${GID_ENEMY}`, { download:true, header:false, complete:(r)=>{
                 state.enPool = r.data.slice(1).filter(d=>d[0]).map((d,i)=>({name:d[0], hp:parseInt(d[1])||10, type:parseInt(d[2])||1, acts:[d[4],d[5],d[6],d[7],d[8],d[9]].filter(a=>a&&a.trim())}));
-                Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download: true, header: false, complete: (r) => {
+                Papa.parse(`${BASE_URL}&gid=${GID_CONFIG}`, { download:true, header:false, complete:(r)=>{
                     state.waves = r.data.slice(1).map(d=>({n:parseInt(d[0])||0, e:parseInt(d[1])||0, b:parseInt(d[2])||0, z:parseInt(d[3])||0}));
                     genWave();
                 }});
             }});
         }
 
-        function initBattle() { state.draw = [...state.deck]; state.disc = []; state.hand = []; shuffle(state.draw); drawCard(5); }
-        function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} }
+        // --- Core Utils ---
+        function resolveVal(v) {
+            if(!v || !v.trim()) return 1; if(!isNaN(v)) return parseFloat(v);
+            const e = state.curEn; const h = state.hand.length;
+            let x = v.toLowerCase()
+                .replace(/{hp}/g, state.pHP).replace(/{mhp}/g, state.pMaxHP).replace(/{loss}/g, state.pMaxHP - state.pHP)
+                .replace(/{shd}/g, state.pShd).replace(/{str}/g, state.pStr)
+                .replace(/{eng}/g, state.eng).replace(/{max_eng}/g, state.maxEng)
+                .replace(/{hand}/g, h).replace(/{max_hand}/g, state.maxHand)
+                .replace(/{draw_pile}/g, state.draw.length).replace(/{disc_pile}/g, state.disc.length)
+                .replace(/{en_hp}/g, e?e.curHP:0).replace(/{en_mhp}/g, e?e.hp:0).replace(/{en_loss}/g, e?e.hp-e.curHP:0)
+                .replace(/{en_shd}/g, e?e.shd:0).replace(/{en_str}/g, e?e.str:0)
+                .replace(/{en_psn}/g, e?e.psn:0).replace(/{en_vuln}/g, e?e.vuln:0).replace(/{en_weak}/g, e?e.weak:0)
+                .replace(/{en_type}/g, e?e.type:1).replace(/{round}/g, state.round).replace(/{wave}/g, state.curWave.length-state.wIdx);
+            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
+        }
 
+        // --- Battle Flow ---
+        function initBattle() { state.draw=[...state.deck]; state.disc=[]; state.hand=[]; shuffle(state.draw); drawCard(5); }
+        function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} }
+        
         function genWave() {
-            const cfg = state.waves[state.round-1];
-            if(!cfg) return alert("VICTORY!");
-            let w = [];
-            const add = (t,n) => { const p=state.enPool.filter(e=>e.type===t); for(let i=0;i<n;i++) if(p.length) w.push({...p[Math.floor(Math.random()*p.length)]}); };
+            const cfg = state.waves[state.round-1]; if(!cfg) return alert("VICTORY!");
+            let w = []; const add=(t,n)=>{const p=state.enPool.filter(e=>e.type===t); for(let i=0;i<n;i++) if(p.length) w.push({...p[Math.floor(Math.random()*p.length)]});};
             add(1,cfg.n); add(2,cfg.e); add(3,cfg.b); add(4,cfg.z);
-            state.curWave = w; state.wIdx = 0; nextEn();
+            state.curWave=w; state.wIdx=0; nextEn();
         }
 
         function nextEn() {
             document.body.classList.remove('boss-mode');
             if(state.wIdx >= state.curWave.length) return showReward();
-            const raw = state.curWave[state.wIdx];
-            state.curEn = { ...raw, curHP: raw.hp, hp:raw.hp, step:0, psn:0, vuln:0, weak:0, stun:false, marks:[], shd:0, str:0 };
+            const r = state.curWave[state.wIdx];
+            state.curEn = { ...r, curHP:r.hp, hp:r.hp, step:0, psn:0, vuln:0, weak:0, stun:false, marks:[], shd:0, str:0 };
             state.wIdx++;
-            if(state.curEn.type===4) { document.body.classList.add('boss-mode'); log("BOSS WARNING"); }
+            if(state.curEn.type===4) { document.body.classList.add('boss-mode'); log("⚠ BOSS WARNING ⚠"); }
             document.getElementById('enemy-target').className = 'enemy-box tier-'+state.curEn.type;
             update();
         }
 
-        // ★ 新增：產生暫時卡牌 (ID對應)
-        function addTempCard(rowId) {
-            const target = state.lib.find(c => c.row == rowId);
-            if(target) {
-                if(state.hand.length >= state.maxHand) { log("HAND FULL"); return; }
-                const tempCard = { ...target, isTemp: true };
-                state.hand.push(tempCard);
-                log("JUNK ADDED");
-                visualFlash('player-box', 'dmg'); // 視覺提示
-                renderHand(); update();
-            }
-        }
-
+        // --- Card Logic ---
         function drawCard(n) {
-            const can = state.maxHand - state.hand.length;
-            let cnt = Math.min(n, can);
+            let cnt = Math.min(n, state.maxHand - state.hand.length);
             if(cnt<=0 && n>0) log("HAND FULL");
-            for(let i=0; i<cnt; i++) {
+            for(let i=0;i<cnt;i++) {
                 if(!state.draw.length) { if(!state.disc.length) break; state.draw=[...state.disc]; state.disc=[]; shuffle(state.draw); log("SHUFFLE"); }
                 state.hand.push(state.draw.pop());
             }
             renderHand(); update();
         }
 
+        function addTempCard(id) {
+            const c = state.lib.find(x=>x.row==id);
+            if(c && state.hand.length < state.maxHand) {
+                state.hand.push({...c, isTemp:true}); log("ADDED CARD"); visualFlash('player-box','dmg'); renderHand(); update();
+            } else log("HAND FULL");
+        }
+
         function playCard(c, idx) {
             state.eng -= c.cost;
-            const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
-            while((m=reg.exec(c.eff))!==null) {
-                const t=m[1], vRaw=m[2], val=calc(vRaw);
-                if(t==='dmg') dmgEn(val);
-                if(t==='def') { state.pShd+=val; log(`SHIELD ${val}`); }
-                if(t==='heal') { state.pHP=Math.min(state.pMaxHP, state.pHP+val); log(`HEAL ${val}`); }
-                if(t==='eng') { state.eng+=val; log(`ENG +${val}`); }
-                if(t==='draw') { drawCard(val); log(`DRAW ${val}`); }
-                if(t==='hand_limit') { state.maxHand=Math.max(0,state.maxHand+val); log(`HAND MAX ${val>0?'+':''}${val}`); }
-                
-                // 玩家也可以用 add_card
-                if(t==='add_card') { addTempCard(parseInt(vRaw)); }
-
-                if(t==='mark') { const n=vRaw.trim(); if(state.sel.target==='en'){ state.curEn.marks.push(n); }else{ state.pMarks.push(n); } log(`MARK: ${n}`); }
-                if(t==='unmark') { const n=vRaw.trim(); const arr=state.sel.target==='en'?state.curEn.marks:state.pMarks; const i=arr.indexOf(n); if(i>-1) arr.splice(i,1); }
-                if(t==='psn') { state.curEn.psn+=val; log(`POISON ${val}`); }
-                if(t==='vuln') { state.curEn.vuln+=val; log(`VULN ${val}`); }
-                if(t==='weak') { state.curEn.weak+=val; log(`WEAK ${val}`); }
-                if(t==='stun') { state.curEn.stun=true; log("STUNNED"); }
-                if(t==='sdmg') { state.pHP-=val; log(`HURT ${val}`); }
-                if(t==='str') { state.pStr+=val; log(`STR ${val}`); }
-                if(t==='drain') { const d=dmgEn(val); state.pHP=Math.min(state.pMaxHP, state.pHP+d); log(`DRAIN ${d}`); }
-                if(t==='pure') { state.curEn.curHP-=val; log(`PURE ${val}`); visualFlash('enemy-target','pure'); }
-                if(t==='maxhp') { state.pMaxHP+=val; state.pHP+=val; log(`MAXHP +${val}`); }
-            }
+            applyEffects(c.eff, 'player'); // Player is source
             state.hand.splice(idx, 1);
-            
-            // 暫時卡/一次性卡 直接移除
             if(c.eff.includes('[#once]') || c.isTemp) log("BANISHED"); else state.disc.push(c);
-            
             cancelSel(); checkWin(); update(); renderHand();
         }
 
-        function calc(s) {
-            if(!s || !s.trim()) return 1; if(!isNaN(s)) return parseFloat(s);
-            const e=state.curEn; const h=state.hand.length; 
-            let x = s.toLowerCase()
-                .replace(/{hp}/g,state.pHP).replace(/{mhp}/g,state.pMaxHP).replace(/{shd}/g,state.pShd)
-                .replace(/{str}/g,state.pStr).replace(/{eng}/g,state.eng).replace(/{hand}/g,h)
-                .replace(/{draw_pile}/g,state.draw.length).replace(/{disc_pile}/g,state.disc.length)
-                .replace(/{en_hp}/g,e?e.curHP:0).replace(/{en_mhp}/g,e?e.hp:0)
-                .replace(/{en_shd}/g,e?e.shd:0).replace(/{en_str}/g,e?e.str:0)
-                .replace(/{en_psn}/g,e?e.psn:0).replace(/{en_vuln}/g,e?e.vuln:0);
-            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
+        // --- Unified Effect Processor ---
+        function applyEffects(effStr, source) {
+            const isPlayer = source === 'player';
+            const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
+            while((m=reg.exec(effStr))!==null) {
+                const tag=m[1], valRaw=m[2], val=resolveVal(valRaw);
+                
+                // Targets
+                const targetEn = isPlayer ? state.curEn : null; // If player casts, target enemy
+                const targetPl = isPlayer ? null : true; // If enemy casts, target player
+
+                // Damage
+                if(tag==='dmg') {
+                    if(isPlayer) { // Player attacks Enemy
+                        let d = val + state.pStr;
+                        if(targetEn.vuln>0) d=Math.floor(d*1.5);
+                        if(targetEn.weak>0) d=Math.floor(d*0.75); // Enemy weak means IT takes less dmg? No, Player weak means Player deals less.
+                        if(state.pWeak>0) d=Math.floor(d*0.75); // Correct: Player weak reduces output.
+                        
+                        let dmgHp = d;
+                        if(targetEn.shd > 0) {
+                            if(targetEn.shd >= d) { targetEn.shd -= d; dmgHp = 0; log("BLOCKED"); }
+                            else { dmgHp -= targetEn.shd; targetEn.shd = 0; }
+                        }
+                        if(dmgHp>0) { targetEn.curHP -= dmgHp; log(`HIT ${dmgHp}`); visualFlash('enemy-target','dmg'); }
+                    } else { // Enemy attacks Player
+                        let d = val + (state.curEn.str||0);
+                        if(state.pVuln>0) d=Math.floor(d*1.5);
+                        if(state.curEn.weak>0) d=Math.floor(d*0.75); // Enemy weak reduces Enemy output
+                        // Check Player Marks (Lock-on)
+                        if(state.pMarks.includes('鎖定')) d=Math.floor(d*1.5); 
+
+                        let dmgHp = d;
+                        if(state.pShd >= d) { state.pShd -= d; dmgHp = 0; log("BLOCKED"); }
+                        else { dmgHp -= state.pShd; state.pShd = 0; }
+                        
+                        if(dmgHp>0) { state.pHP -= dmgHp; log(`TOOK ${dmgHp}`); visualFlash('player-box','dmg'); }
+                    }
+                }
+
+                // Specialized
+                if(tag==='drain' && isPlayer) { /* Simple drain for player logic if needed, usually combines dmg */ }
+                if(tag==='en_drain' && !isPlayer) { /* Enemy Drain logic handled in Dmg calc above? No, separate logic needed */
+                     // Re-using simplified damage logic for drain to avoid complexity
+                     let d = val + (state.curEn.str||0);
+                     let actual = Math.max(0, d - state.pShd); // Simplified drain
+                     if(actual>0) { state.pHP-=actual; state.curEn.curHP=Math.min(state.curEn.hp, state.curEn.curHP+actual); log(`DRAIN ${actual}`); visualFlash('enemy-target','pure');}
+                }
+                
+                if(tag==='def') { if(isPlayer) state.pShd+=val; else state.curEn.shd=(state.curEn.shd||0)+val; log(`SHIELD ${val}`); }
+                if(tag==='heal') { if(isPlayer) state.pHP=Math.min(state.pMaxHP, state.pHP+val); else state.curEn.curHP=Math.min(state.curEn.hp, state.curEn.curHP+val); log(`HEAL ${val}`); }
+                if(tag==='str') { if(isPlayer) state.pStr+=val; else state.curEn.str=(state.curEn.str||0)+val; log(`STR ${val}`); }
+                
+                // Self Damage
+                if(tag==='sdmg' && isPlayer) { state.pHP-=val; log(`HURT ${val}`); }
+                if(tag==='en_sdmg' && !isPlayer) { state.curEn.curHP-=val; log(`EN SACRIFICE ${val}`); visualFlash('enemy-target','dmg'); if(state.curEn.curHP<=0) checkWin(); }
+
+                // States (Apply to Opponent)
+                if(tag==='psn') { if(isPlayer) state.curEn.psn+=val; else state.pPsn+=val; log(`POISON ${val}`); }
+                if(tag==='vuln') { if(isPlayer) state.curEn.vuln+=val; else state.pVuln+=val; log(`VULN ${val}`); }
+                if(tag==='weak') { if(isPlayer) state.curEn.weak+=val; else state.pWeak+=val; log(`WEAK ${val}`); }
+                if(tag==='stun') { if(isPlayer) state.curEn.stun=true; log("STUNNED"); }
+                
+                // Marks
+                if(tag==='mark') { const n=valRaw.trim(); if(isPlayer) state.curEn.marks.push(n); else state.pMarks.push(n); log(`MARK: ${n}`); }
+                if(tag==='unmark') { const n=valRaw.trim(); const arr=isPlayer?state.curEn.marks:state.pMarks; const i=arr.indexOf(n); if(i>-1) arr.splice(i,1); }
+
+                // Misc
+                if(tag==='eng') { state.eng+=val; log(`ENG +${val}`); }
+                if(tag==='draw') { drawCard(val); log(`DRAW ${val}`); }
+                if(tag==='hand_limit') { state.maxHand=Math.max(0,state.maxHand+val); }
+                if(tag==='add_card' || tag==='en_add_card') { addTempCard(parseInt(valRaw)); }
+                if(tag==='pure') { if(isPlayer) state.curEn.curHP-=val; else state.pHP-=val; log(`PURE ${val}`); }
+                if(tag==='maxhp') { state.pMaxHP+=val; state.pHP+=val; log(`MAXHP +${val}`); }
+            }
         }
 
-        function dmgEn(v) {
-            let d = v + state.pStr; 
-            if(state.curEn.vuln>0) d=Math.floor(d*1.5);
-            if(state.pWeak>0) d=Math.floor(d*0.75);
+        // --- Turn Logic ---
+        document.getElementById('end-btn').onclick = () => {
+            if(!state.curEn) return;
+            state.hand.forEach(c => { if(!c.isTemp) state.disc.push(c); }); state.hand=[]; renderHand();
             
-            let dmgToHp = d;
-            if((state.curEn.shd||0) > 0) {
-                if(state.curEn.shd >= d) { state.curEn.shd -= d; dmgToHp = 0; log(`ENEMY BLOCKED`); }
-                else { dmgToHp -= state.curEn.shd; state.curEn.shd = 0; }
+            // Enemy Turn
+            if(state.curEn.psn>0) { state.curEn.curHP-=state.curEn.psn; state.curEn.psn--; log(`POISON ${state.curEn.psn+1}`); if(state.curEn.curHP<=0){nextEn(); newTurn(); return;} }
+            
+            if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
+            else {
+                state.curEn.shd = 0; // Reset Enemy Shield
+                const act = state.curEn.acts[state.curEn.step % state.curEn.acts.length];
+                applyEffects(act, 'enemy'); // Execute Enemy Action
+                state.curEn.step++;
             }
-
-            if(dmgToHp > 0) {
-                state.curEn.curHP -= dmgToHp; 
-                log(`HIT ${dmgToHp}`); 
-                visualFlash('enemy-target','dmg');
-            }
-            return dmgToHp;
+            if(state.curEn.vuln>0) state.curEn.vuln--; if(state.curEn.weak>0) state.curEn.weak--;
+            
+            // Player Start Turn
+            if(state.pPsn>0) { state.pHP-=state.pPsn; log(`POISON DMG ${state.pPsn}`); state.pPsn--; }
+            if(state.pVuln>0) state.pVuln--; if(state.pWeak>0) state.pWeak--;
+            state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
         }
 
         function checkWin() { if(state.curEn && state.curEn.curHP<=0) nextEn(); }
+        function newTurn() { /* Helper, mostly done in end-btn */ update(); }
 
+        // --- UI & Rewards ---
         function renderHand() {
             const div = document.getElementById('hand-container'); div.innerHTML='';
             state.hand.forEach((c, i) => {
                 const el = document.createElement('div'); 
-                // ★ 暫時卡牌樣式
                 el.className = c.isTemp ? 'card temp-card' : 'card';
-                el.innerHTML = `
-                    <div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-row-id">#${c.row}</div></div>
-                    <div class="card-name">${c.name}</div>
-                    <div class="card-body">${fmt(c.eff)} ${c.isTemp ? '<span class="tag-badge bg-temp">TEMP</span>' : ''}</div>
-                `;
-                el.onclick = (e) => {
-                    e.stopPropagation();
+                el.innerHTML = `<div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-row-id">#${c.row}</div></div><div class="card-name">${c.name}</div><div class="card-body">${fmt(c.eff)} ${c.isTemp?'<span class="tag-badge bg-once">TEMP</span>':''}</div>`;
+                el.onclick = (e) => { e.stopPropagation(); 
                     if(state.eng < c.cost) { log("NO ENERGY"); return; }
-                    const req = /\[#req\s+(.*?)\]/.exec(c.eff);
-                    if(req && !state.curEn.marks.includes(req[1].trim())) { log(`REQ: ${req[1]}`); return; }
-                    const reqm = /\[#reqme\s+(.*?)\]/.exec(c.eff);
-                    if(reqm && !state.pMarks.includes(reqm[1].trim())) { log(`NEED: ${reqm[1]}`); return; }
-
+                    // Req Checks
+                    const req = /\[#req\s+(.*?)\]/.exec(c.eff); if(req && !state.curEn.marks.includes(req[1].trim())) { log(`REQ: ${req[1]}`); return; }
+                    const reqm = /\[#reqme\s+(.*?)\]/.exec(c.eff); if(reqm && !state.pMarks.includes(reqm[1].trim())) { log(`NEED: ${reqm[1]}`); return; }
+                    
                     if(state.sel && state.sel.idx === i) cancelSel();
-                    else {
-                        cancelSel(); state.sel = { idx:i, card:c }; el.classList.add('selected');
+                    else { cancelSel(); state.sel = { idx:i, card:c }; el.classList.add('selected');
                         const isAtk = /\[#(dmg|psn|weak|vuln|stun|drain|pure|mark|unmark|req)/.test(c.eff);
                         if(isAtk) { document.getElementById('enemy-target').classList.add('target-active'); state.sel.target='en'; }
                         else { document.getElementById('player-box').classList.add('target-active'); state.sel.target='pl'; }
                     }
                 };
-                const rot = (i - (state.hand.length-1)/2) * 5;
-                el.style.transform = `rotate(${rot}deg) translateY(${Math.abs(rot)*2}px)`;
+                const rot = (i - (state.hand.length-1)/2) * 5; el.style.transform = `rotate(${rot}deg) translateY(${Math.abs(rot)*2}px)`;
                 div.appendChild(el);
             });
         }
 
-        function cancelSel() {
-            state.sel = null;
-            document.querySelectorAll('.selected').forEach(e=>e.classList.remove('selected'));
-            document.querySelectorAll('.target-active').forEach(e=>e.classList.remove('target-active'));
-        }
-
+        function cancelSel() { state.sel = null; document.querySelectorAll('.selected, .target-active').forEach(e=>e.classList.remove('selected','target-active')); }
         document.getElementById('enemy-target').onclick = () => { if(state.sel && state.sel.target==='en') playCard(state.sel.card, state.sel.idx); };
         document.getElementById('player-box').onclick = () => { if(state.sel && state.sel.target==='pl') playCard(state.sel.card, state.sel.idx); };
-
-        document.getElementById('end-btn').onclick = () => {
-            if(!state.curEn) return;
-            
-            // ★ 回合結束：棄掉普通牌，移除暫時牌
-            state.hand.forEach(c => {
-                if(!c.isTemp) state.disc.push(c);
-            });
-            state.hand = []; 
-            renderHand();
-            
-            if(state.curEn.psn>0) { 
-                state.curEn.curHP-=state.curEn.psn; state.curEn.psn--; log(`ENEMY POISON ${state.curEn.psn+1}`);
-                if(state.curEn.curHP<=0) { nextEn(); newTurn(); return; }
-            }
-            
-            if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
-            else { try{ enemyAction(); } catch(e){ console.error(e); } }
-            
-            if(state.curEn.vuln>0) state.curEn.vuln--; 
-            if(state.curEn.weak>0) state.curEn.weak--; 
-            
-            newTurn();
-        };
-
-        function calculateEnemyDmgToPlayer(baseVal) {
-            let inc = baseVal + (state.curEn.str||0); 
-            if(state.curEn.weak>0) inc=Math.floor(inc*0.75);
-            if(state.pVuln>0) inc=Math.floor(inc*1.5);
-            
-            let dmgToHp = inc;
-            if(state.pShd >= inc) {
-                state.pShd -= inc; dmgToHp = 0; log("BLOCKED");
-            } else {
-                dmgToHp -= state.pShd; state.pShd = 0;
-            }
-            return dmgToHp;
-        }
-
-        function enemyAction() {
-            const acts = state.curEn.acts; if(!acts.length) return;
-            const currentAct = acts[state.curEn.step % acts.length];
-            state.curEn.shd = 0; 
-
-            const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
-            while((m=reg.exec(currentAct))!==null) {
-                const t=m[1], vRaw=m[2], val=resolveVal(vRaw);
-                
-                if(t==='dmg') {
-                    const dealt = calculateEnemyDmgToPlayer(val);
-                    if(dealt > 0) { state.pHP -= dealt; log(`TOOK ${dealt}`); visualFlash('player-box','dmg'); }
-                }
-                
-                if(t==='en_drain') {
-                    const dealt = calculateEnemyDmgToPlayer(val);
-                    if(dealt > 0) {
-                        state.pHP -= dealt;
-                        state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP + dealt);
-                        log(`DRAIN ${dealt}`);
-                        visualFlash('player-box', 'dmg'); visualFlash('enemy-target', 'pure');
-                    } else { log("DRAIN BLOCKED"); }
-                }
-
-                if(t==='en_sdmg') {
-                    state.curEn.curHP -= val;
-                    log(`EN SACRIFICE ${val}`);
-                    visualFlash('enemy-target','dmg');
-                    if(state.curEn.curHP <= 0) { checkWin(); return; }
-                }
-
-                if(t==='heal') { state.curEn.curHP = Math.min(state.curEn.hp, state.curEn.curHP+val); log(`EN HEAL ${val}`); }
-                if(t==='def') { state.curEn.shd = (state.curEn.shd||0) + val; log(`EN SHIELD ${val}`); } 
-                if(t==='str') { state.curEn.str = (state.curEn.str||0) + val; log(`EN STR ${val}`); }
-                
-                // ★ 敵人塞牌 (en_add_card)
-                if(t==='en_add_card') { addTempCard(parseInt(vRaw)); }
-
-                if(t==='mark') { state.pMarks.push(vRaw.trim()); log(`MARKED: ${vRaw.trim()}`); }
-                if(t==='unmark') { const i=state.pMarks.indexOf(vRaw.trim()); if(i>-1) state.pMarks.splice(i,1); }
-                if(t==='psn') { state.pPsn += val; log(`POISONED ${val}`); }
-                if(t==='vuln') { state.pVuln += val; log(`VULNERABLE ${val}`); }
-                if(t==='weak') { state.pWeak += val; log(`WEAKENED ${val}`); }
-            }
-            state.curEn.step++;
-        }
-
-        function newTurn() {
-            if(state.pPsn > 0) { state.pHP -= state.pPsn; log(`POISON DMG ${state.pPsn}`); state.pPsn--; }
-            if(state.pVuln > 0) state.pVuln--;
-            if(state.pWeak > 0) state.pWeak--;
-            state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
-        }
-
-        function showReward() {
-            state.isRewardMode = true;
-            document.getElementById('victory-screen').style.display = 'flex';
-            document.getElementById('reward-options').style.display = 'flex';
-            document.querySelector('.warning-text').style.display = 'block';
-            document.querySelector('.victory-subtitle').innerText = "CHOOSE YOUR REWARD";
-            document.getElementById('next-lvl-btn').style.display = 'none';
-        }
-
-        window.showRemoveCardUI = () => {
-            const ov = document.getElementById('card-selection-overlay');
-            const ct = document.getElementById('pile-viewer-content');
-            document.getElementById('selection-title-text').innerText = "REMOVE A CARD";
-            ct.innerHTML = '';
-            state.deck.forEach((c,i)=>{
-                const el = mkCardEl(c); el.style.position='relative'; el.style.transform='scale(0.9)'; el.style.margin='0';
-                el.onclick = (e)=>{ e.stopPropagation(); if(confirm("Remove?")) { state.deck.splice(i,1); finishReward(); ov.style.display='none'; }};
-                ct.appendChild(el);
-            });
-            ov.style.display='flex';
-        };
-
-        window.showAddCardUI = () => {
-            const ov = document.getElementById('card-selection-overlay');
-            const ct = document.getElementById('pile-viewer-content');
-            document.getElementById('selection-title-text').innerText = "DRAFT A CARD";
-            ct.innerHTML = '';
-            for(let i=0;i<3;i++){
-                const c = state.lib[Math.floor(Math.random()*state.lib.length)];
-                const el = mkCardEl(c); el.style.position='relative'; el.style.transform='scale(0.9)'; el.style.margin='0';
-                el.onclick = (e)=>{ e.stopPropagation(); if(confirm("Add?")) { state.deck.push({...c}); finishReward(); ov.style.display='none'; }};
-                ct.appendChild(el);
-            }
-            ov.style.display='flex';
-        };
-
-        window.chooseHeal = () => {
-            const h = Math.floor(state.pMaxHP*0.15); state.pHP = Math.min(state.pMaxHP, state.pHP+h);
-            alert(`Healed ${h}`); finishReward();
-        };
-
-        function finishReward() {
-            document.getElementById('reward-options').style.display = 'none';
-            document.querySelector('.warning-text').style.display = 'none';
-            document.querySelector('.victory-subtitle').innerText = "PREPARE FOR NEXT BATTLE";
-            document.getElementById('next-lvl-btn').style.display = 'block';
-        }
-
-        window.goToNextLevel = () => {
-            document.getElementById('victory-screen').style.display='none';
-            state.isRewardMode = false; state.round++; genWave(); initBattle();
-        };
-
-        window.showPile = (t, arr) => {
-            if(state.isRewardMode) return;
-            const ov = document.getElementById('card-selection-overlay');
-            const ct = document.getElementById('pile-viewer-content');
-            document.getElementById('selection-title-text').innerText = t;
-            ct.innerHTML = '';
-            [...arr].sort((a,b)=>a.row-b.row).forEach(c => {
-                const el = mkCardEl(c); el.style.pointerEvents='none'; el.style.transform='scale(0.8)'; el.style.position='relative'; el.style.margin='0';
-                ct.appendChild(el);
-            });
-            ov.style.display = 'flex';
-        };
-
-        window.closePileViewer = (e) => {
-            if(e.target.id==='card-selection-overlay' && !state.isRewardMode) document.getElementById('card-selection-overlay').style.display='none';
-        };
-
-        function mkCardEl(c) {
-            const el = document.createElement('div'); el.className='card';
-            el.innerHTML=`<div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-row-id">#${c.row}</div></div><div class="card-name">${c.name}</div><div class="card-body">${fmt(c.eff)}</div>`;
-            return el;
-        }
-
-        function fmt(t) {
-            return t.replace(/\[#(\w+)\s*(.*?)\]/g, (m,k,v)=>{
-                if(k==='dmg') return `<span class="tag-badge bg-dmg">DMG ${v}</span>`;
-                if(k==='def') return `<span class="tag-badge bg-def">DEF ${v}</span>`;
-                if(k==='heal') return `<span class="tag-badge bg-heal">HEAL ${v}</span>`;
-                if(k==='mark') return `<span class="tag-badge bg-mark">${v}</span>`;
-                if(k==='req') return `<span class="tag-badge bg-req">REQ ${v}</span>`;
-                if(k==='reqme') return `<span class="tag-badge bg-req">NEED ${v}</span>`;
-                if(k==='once') return `<span class="tag-badge bg-once">ONCE</span>`;
-                if(k==='add_card') return `<span class="tag-badge bg-add">ADD #${v}</span>`;
-                if(k==='en_add_card') return `<span class="tag-badge bg-en-add">GIVE #${v}</span>`;
-                return `<span class="tag-badge bg-eng">${k.toUpperCase()} ${v}</span>`;
-            });
-        }
-
-        function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
-        function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
-        function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
-        function resolveVal(valStr) {
-            if (!valStr || valStr.toString().trim() === "") return 1;
-            if (isNaN(valStr) && !valStr.includes('{')) return 1;
-            if (!isNaN(valStr)) return parseFloat(valStr);
-            const en = state.curEn; const h=state.hand.length; 
-            let x = valStr.toString().toLowerCase()
-                .replace(/{hp}/g,state.pHP).replace(/{mhp}/g,state.pMaxHP).replace(/{shd}/g,state.pShd)
-                .replace(/{str}/g,state.pStr).replace(/{eng}/g,state.eng).replace(/{hand}/g,h)
-                .replace(/{en_hp}/g,en?en.curHP:0).replace(/{en_mhp}/g,en?en.hp:0).replace(/{en_psn}/g,en?en.psn:0).replace(/{en_vuln}/g,en?en.vuln:0);
-            try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
-        }
+        document.body.onclick = () => { if(state.sel) cancelSel(); };
 
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
@@ -722,16 +432,12 @@
                 document.getElementById('ui-en-name').innerText = e.name;
                 document.getElementById('ui-en-hp-text').innerText = `${e.curHP}/${e.hp}`;
                 document.getElementById('ui-en-hp-fill').style.width = Math.max(0, (e.curHP/e.hp)*100)+'%';
-                
-                const enShdFill = document.getElementById('ui-en-shield-fill');
-                enShdFill.style.width = (e.shd||0) > 0 ? Math.min(100,((e.shd||0)/e.hp)*100)+'%' : '0%';
-
+                document.getElementById('ui-en-shield-fill').style.width = (e.shd||0)>0 ? Math.min(100,((e.shd||0)/e.hp)*100)+'%' : '0%';
                 document.getElementById('ui-en-intent').innerText = `INTENT: ${e.acts[e.step % e.acts.length]}`;
 
                 const eb = document.getElementById('en-status'); eb.innerHTML='';
                 if((e.shd||0)>0) eb.innerHTML+=makeBadge('護盾', e.shd, 'st-shield');
                 if((e.str||0)>0) eb.innerHTML+=makeBadge('力量', e.str, 'st-str');
-                
                 if(e.psn>0) eb.innerHTML+=makeBadge('中毒', e.psn, 'st-poison');
                 if(e.vuln>0) eb.innerHTML+=makeBadge('易傷', e.vuln, 'st-vuln');
                 if(e.weak>0) eb.innerHTML+=makeBadge('虛弱', e.weak, 'st-weak');
@@ -741,11 +447,27 @@
             if(state.pHP<=0) { setTimeout(()=>location.reload(), 500); alert("DEFEAT"); }
         }
 
-        function makeBadge(name, val, cls) {
-            return `<div class="status-badge ${cls}">${name}${val?' '+val:''}</div>`;
-        }
-        
-        document.body.onclick = () => { if(state.sel) cancelSel(); };
+        // --- Helpers ---
+        function makeBadge(n,v,c) { return `<div class="status-badge ${c}">${n}${v?' '+v:''}</div>`; }
+        function log(m) { const l=document.getElementById('action-log'); l.innerText=m; l.style.opacity=1; l.style.transform="translateY(-20px)"; setTimeout(()=>{l.style.opacity=0;l.style.transform="translateY(0)"},800); }
+        function visualFlash(id,t) { const e=document.getElementById(id); if(t==='dmg')e.style.filter="sepia(1) hue-rotate(-50deg) saturate(5)"; if(t==='pure')e.style.filter="invert(1)"; setTimeout(()=>e.style.filter="",100); }
+        function countMarks(m){ const c={}; m.forEach(x=>{c[x]=(c[x]||0)+1}); return Object.entries(c).map(([n,c])=>({n,c})); }
+        function fmt(t) { return t.replace(/\[#(\w+)\s*(.*?)\]/g, (m,k,v)=>{ 
+            const d={dmg:'DMG',def:'DEF',heal:'HEAL',mark:'',req:'REQ',reqme:'NEED',once:'ONCE',add_card:'ADD #',en_add_card:'GIVE #'};
+            const bg={dmg:'bg-dmg',def:'bg-def',heal:'bg-heal',add_card:'bg-add',en_add_card:'bg-en-add'};
+            return `<span class="tag-badge ${bg[k]||'bg-eng'}">${d[k]!==undefined?d[k]:k.toUpperCase()} ${v}</span>`; 
+        });}
+
+        // --- Reward UI ---
+        function showReward() { state.isRewardMode=true; document.getElementById('victory-screen').style.display='flex'; document.getElementById('reward-options').style.display='flex'; document.getElementById('next-lvl-btn').style.display='none'; }
+        window.goToNextLevel = () => { document.getElementById('victory-screen').style.display='none'; state.isRewardMode=false; state.round++; genWave(); initBattle(); };
+        window.showPile = (t, arr) => { if(state.isRewardMode) return; const o=document.getElementById('card-selection-overlay'), c=document.getElementById('pile-viewer-content'); document.getElementById('selection-title-text').innerText=t; c.innerHTML=''; [...arr].sort((a,b)=>a.row-b.row).forEach(x=>c.appendChild(mkCardEl(x,true))); o.style.display='flex'; };
+        window.closePileViewer = (e) => { if(e.target.id==='card-selection-overlay' && !state.isRewardMode) document.getElementById('card-selection-overlay').style.display='none'; };
+        window.showRemoveCardUI = () => { const c=document.getElementById('pile-viewer-content'); c.innerHTML=''; state.deck.forEach((x,i)=>{const e=mkCardEl(x); e.onclick=(ev)=>{ev.stopPropagation();if(confirm("Remove?")){state.deck.splice(i,1); finishRew();}}; c.appendChild(e);}); document.getElementById('card-selection-overlay').style.display='flex'; };
+        window.showAddCardUI = () => { const c=document.getElementById('pile-viewer-content'); c.innerHTML=''; for(let i=0;i<3;i++){const x=state.lib[Math.floor(Math.random()*state.lib.length)]; const e=mkCardEl(x); e.onclick=(ev)=>{ev.stopPropagation();if(confirm("Add?")){state.deck.push({...x}); finishRew();}}; c.appendChild(e);} document.getElementById('card-selection-overlay').style.display='flex'; };
+        window.chooseHeal = () => { state.pHP=Math.min(state.pMaxHP, state.pHP+Math.floor(state.pMaxHP*0.15)); alert("Healed"); finishRew(); };
+        function finishRew() { document.getElementById('card-selection-overlay').style.display='none'; document.getElementById('reward-options').style.display='none'; document.getElementById('next-lvl-btn').style.display='block'; }
+        function mkCardEl(c, viewOnly) { const e=document.createElement('div'); e.className='card'; e.innerHTML=`<div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-row-id">#${c.row}</div></div><div class="card-name">${c.name}</div><div class="card-body">${fmt(c.eff)}</div>`; if(viewOnly){e.style.transform='scale(0.8)';e.style.cursor='default';} else{e.style.transform='scale(0.9)';} e.style.position='relative'; e.style.margin='0'; return e; }
     </script>
 </body>
 </html>

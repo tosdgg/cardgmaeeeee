@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v11.0 - Unified Logic</title>
+    <title>Steampunk Duelist v11.1 - Turn Counter</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -35,6 +35,8 @@
         .dashboard-group { display: flex; gap: 15px; pointer-events: auto; }
         .gauge-circle { width: 70px; height: 70px; border: 3px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .gauge-val { font-family: 'Rye'; font-size: 1.5rem; color: var(--steam-blue); }
+        
+        /* 右上角現在顯示 TURN */
         .round-box { width: 60px; height: 70px; background: var(--leather); border: 3px double var(--brass); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
         #battle-area { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px; width: 100%; }
@@ -123,7 +125,7 @@
             <div class="gauge-circle"><span class="gauge-label">ENERGY</span><span id="ui-eng" class="gauge-val">3/3</span></div>
             <div class="gauge-circle"><span class="gauge-label">WAVE</span><span id="ui-wave" class="gauge-val">1</span></div>
         </div>
-        <div class="round-box"><span style="font-size:0.5rem">ROUND</span><span id="ui-round" style="font-family:'Rye';font-size:1.2rem;color:var(--gold)">1</span></div>
+        <div class="round-box"><span style="font-size:0.5rem">TURN</span><span id="ui-turn" style="font-family:'Rye';font-size:1.5rem;color:var(--gold)">1</span></div>
     </div>
 
     <div id="battle-area">
@@ -188,7 +190,9 @@
 
         let state = {
             pHP:100, pMaxHP:100, pShd:0, pStr:0, pMarks:[], pPsn:0, pVuln:0, pWeak:0,
-            eng:3, maxEng:3, maxHand:5, round:1,
+            eng:3, maxEng:3, maxHand:5, 
+            round:1, // Wave Number
+            turn:1,  // Current Battle Turn
             lib:[], deck:[], draw:[], disc:[], hand:[],
             enPool:[], waves:[], curWave:[], curEn:null, wIdx:0,
             sel:null, mode:'battle', isRewardMode:false
@@ -222,7 +226,10 @@
                 .replace(/{en_hp}/g, e?e.curHP:0).replace(/{en_mhp}/g, e?e.hp:0).replace(/{en_loss}/g, e?e.hp-e.curHP:0)
                 .replace(/{en_shd}/g, e?e.shd:0).replace(/{en_str}/g, e?e.str:0)
                 .replace(/{en_psn}/g, e?e.psn:0).replace(/{en_vuln}/g, e?e.vuln:0).replace(/{en_weak}/g, e?e.weak:0)
-                .replace(/{en_type}/g, e?e.type:1).replace(/{round}/g, state.round).replace(/{wave}/g, state.curWave.length-state.wIdx);
+                .replace(/{en_type}/g, e?e.type:1)
+                // ★ {round} is Wave, {turn} is current Battle Turn
+                .replace(/{round}/g, state.round).replace(/{wave}/g, state.curWave.length-state.wIdx)
+                .replace(/{turn}/g, state.turn); 
             try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
         }
 
@@ -241,7 +248,9 @@
             document.body.classList.remove('boss-mode');
             if(state.wIdx >= state.curWave.length) return showReward();
             const r = state.curWave[state.wIdx];
+            // ★ Reset Turn to 1 for new enemy
             state.curEn = { ...r, curHP:r.hp, hp:r.hp, step:0, psn:0, vuln:0, weak:0, stun:false, marks:[], shd:0, str:0 };
+            state.turn = 1; 
             state.wIdx++;
             if(state.curEn.type===4) { document.body.classList.add('boss-mode'); log("⚠ BOSS WARNING ⚠"); }
             document.getElementById('enemy-target').className = 'enemy-box tier-'+state.curEn.type;
@@ -280,18 +289,16 @@
             const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
             while((m=reg.exec(effStr))!==null) {
                 const tag=m[1], valRaw=m[2], val=resolveVal(valRaw);
-                
-                // Targets
-                const targetEn = isPlayer ? state.curEn : null; // If player casts, target enemy
-                const targetPl = isPlayer ? null : true; // If enemy casts, target player
+                const targetEn = isPlayer ? state.curEn : null;
+                const targetPl = isPlayer ? null : true;
 
                 // Damage
                 if(tag==='dmg') {
-                    if(isPlayer) { // Player attacks Enemy
+                    if(isPlayer) { 
                         let d = val + state.pStr;
                         if(targetEn.vuln>0) d=Math.floor(d*1.5);
-                        if(targetEn.weak>0) d=Math.floor(d*0.75); // Enemy weak means IT takes less dmg? No, Player weak means Player deals less.
-                        if(state.pWeak>0) d=Math.floor(d*0.75); // Correct: Player weak reduces output.
+                        if(targetEn.weak>0) d=Math.floor(d*0.75); 
+                        if(state.pWeak>0) d=Math.floor(d*0.75); 
                         
                         let dmgHp = d;
                         if(targetEn.shd > 0) {
@@ -299,11 +306,10 @@
                             else { dmgHp -= targetEn.shd; targetEn.shd = 0; }
                         }
                         if(dmgHp>0) { targetEn.curHP -= dmgHp; log(`HIT ${dmgHp}`); visualFlash('enemy-target','dmg'); }
-                    } else { // Enemy attacks Player
+                    } else { 
                         let d = val + (state.curEn.str||0);
                         if(state.pVuln>0) d=Math.floor(d*1.5);
-                        if(state.curEn.weak>0) d=Math.floor(d*0.75); // Enemy weak reduces Enemy output
-                        // Check Player Marks (Lock-on)
+                        if(state.curEn.weak>0) d=Math.floor(d*0.75);
                         if(state.pMarks.includes('鎖定')) d=Math.floor(d*1.5); 
 
                         let dmgHp = d;
@@ -315,11 +321,16 @@
                 }
 
                 // Specialized
-                if(tag==='drain' && isPlayer) { /* Simple drain for player logic if needed, usually combines dmg */ }
-                if(tag==='en_drain' && !isPlayer) { /* Enemy Drain logic handled in Dmg calc above? No, separate logic needed */
-                     // Re-using simplified damage logic for drain to avoid complexity
+                if(tag==='drain' && isPlayer) { 
+                     let d = val + state.pStr;
+                     let actual = d; // Simplified drain for player
+                     state.curEn.curHP -= actual;
+                     state.pHP = Math.min(state.pMaxHP, state.pHP + actual);
+                     log(`DRAIN ${actual}`);
+                }
+                if(tag==='en_drain' && !isPlayer) {
                      let d = val + (state.curEn.str||0);
-                     let actual = Math.max(0, d - state.pShd); // Simplified drain
+                     let actual = Math.max(0, d - state.pShd);
                      if(actual>0) { state.pHP-=actual; state.curEn.curHP=Math.min(state.curEn.hp, state.curEn.curHP+actual); log(`DRAIN ${actual}`); visualFlash('enemy-target','pure');}
                 }
                 
@@ -331,17 +342,14 @@
                 if(tag==='sdmg' && isPlayer) { state.pHP-=val; log(`HURT ${val}`); }
                 if(tag==='en_sdmg' && !isPlayer) { state.curEn.curHP-=val; log(`EN SACRIFICE ${val}`); visualFlash('enemy-target','dmg'); if(state.curEn.curHP<=0) checkWin(); }
 
-                // States (Apply to Opponent)
                 if(tag==='psn') { if(isPlayer) state.curEn.psn+=val; else state.pPsn+=val; log(`POISON ${val}`); }
                 if(tag==='vuln') { if(isPlayer) state.curEn.vuln+=val; else state.pVuln+=val; log(`VULN ${val}`); }
                 if(tag==='weak') { if(isPlayer) state.curEn.weak+=val; else state.pWeak+=val; log(`WEAK ${val}`); }
                 if(tag==='stun') { if(isPlayer) state.curEn.stun=true; log("STUNNED"); }
                 
-                // Marks
                 if(tag==='mark') { const n=valRaw.trim(); if(isPlayer) state.curEn.marks.push(n); else state.pMarks.push(n); log(`MARK: ${n}`); }
                 if(tag==='unmark') { const n=valRaw.trim(); const arr=isPlayer?state.curEn.marks:state.pMarks; const i=arr.indexOf(n); if(i>-1) arr.splice(i,1); }
 
-                // Misc
                 if(tag==='eng') { state.eng+=val; log(`ENG +${val}`); }
                 if(tag==='draw') { drawCard(val); log(`DRAW ${val}`); }
                 if(tag==='hand_limit') { state.maxHand=Math.max(0,state.maxHand+val); }
@@ -361,21 +369,24 @@
             
             if(state.curEn.stun) { log("ENEMY STUNNED"); state.curEn.stun=false; }
             else {
-                state.curEn.shd = 0; // Reset Enemy Shield
+                state.curEn.shd = 0;
                 const act = state.curEn.acts[state.curEn.step % state.curEn.acts.length];
-                applyEffects(act, 'enemy'); // Execute Enemy Action
+                applyEffects(act, 'enemy');
                 state.curEn.step++;
             }
             if(state.curEn.vuln>0) state.curEn.vuln--; if(state.curEn.weak>0) state.curEn.weak--;
             
             // Player Start Turn
+            // ★ Turn Counter +1
+            state.turn++; 
+            
             if(state.pPsn>0) { state.pHP-=state.pPsn; log(`POISON DMG ${state.pPsn}`); state.pPsn--; }
             if(state.pVuln>0) state.pVuln--; if(state.pWeak>0) state.pWeak--;
             state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
         }
 
         function checkWin() { if(state.curEn && state.curEn.curHP<=0) nextEn(); }
-        function newTurn() { /* Helper, mostly done in end-btn */ update(); }
+        function newTurn() { state.turn++; update(); }
 
         // --- UI & Rewards ---
         function renderHand() {
@@ -386,7 +397,6 @@
                 el.innerHTML = `<div class="card-header"><div class="card-cost">${c.cost}</div><div class="card-row-id">#${c.row}</div></div><div class="card-name">${c.name}</div><div class="card-body">${fmt(c.eff)} ${c.isTemp?'<span class="tag-badge bg-once">TEMP</span>':''}</div>`;
                 el.onclick = (e) => { e.stopPropagation(); 
                     if(state.eng < c.cost) { log("NO ENERGY"); return; }
-                    // Req Checks
                     const req = /\[#req\s+(.*?)\]/.exec(c.eff); if(req && !state.curEn.marks.includes(req[1].trim())) { log(`REQ: ${req[1]}`); return; }
                     const reqm = /\[#reqme\s+(.*?)\]/.exec(c.eff); if(reqm && !state.pMarks.includes(reqm[1].trim())) { log(`NEED: ${reqm[1]}`); return; }
                     
@@ -410,7 +420,7 @@
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
             document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;
-            document.getElementById('ui-round').innerText = state.round;
+            document.getElementById('ui-turn').innerText = state.turn; // Update Turn UI
             document.getElementById('hand-counter').innerText = `${state.hand.length}/${state.maxHand}`;
             document.getElementById('ui-draw-n').innerText = state.draw.length;
             document.getElementById('ui-disc-n').innerText = state.disc.length;

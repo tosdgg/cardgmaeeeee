@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Steampunk Duelist v11.1 - Turn Counter</title>
+    <title>Steampunk Duelist v11.2 - Reset & UI Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Rye&display=swap" rel="stylesheet">
     <style>
@@ -31,15 +31,23 @@
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .marquee-content span { white-space: nowrap; font-family: 'Rye'; font-size: 1rem; line-height: 30px; padding-right: 50px; }
 
-        #top-bar { width: 100%; height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 100; margin-top: 30px; pointer-events: none; }
+        #top-bar { width: 100%; height: 80px; display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 20px; z-index: 100; margin-top: 30px; pointer-events: none; }
         .dashboard-group { display: flex; gap: 15px; pointer-events: auto; }
         .gauge-circle { width: 70px; height: 70px; border: 3px solid var(--brass); border-radius: 50%; background: radial-gradient(circle, var(--leather), #111); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .gauge-val { font-family: 'Rye'; font-size: 1.5rem; color: var(--steam-blue); }
         
-        /* 右上角現在顯示 TURN */
-        .round-box { width: 60px; height: 70px; background: var(--leather); border: 3px double var(--brass); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* ★ 修改：右上角資訊欄變高，容納 Turn 和 Round */
+        .round-box { 
+            width: 70px; height: 85px; background: var(--leather); 
+            border: 3px double var(--brass); border-radius: 8px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            box-shadow: 0 5px 10px #000;
+        }
+        .info-label { font-size: 0.5rem; color: #aaa; line-height: 1; margin-bottom: 2px; }
+        .info-val { font-family: 'Rye'; font-size: 1.4rem; line-height: 1; color: var(--gold); }
+        .divider { width: 80%; height: 1px; background: #665; margin: 4px 0; }
 
-        #battle-area { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px; width: 100%; }
+        #battle-area { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 15px; width: 100%; }
         
         .enemy-box { width: 360px; background: #222; border: 6px ridge var(--bronze); padding: 20px; border-radius: 5px; position: relative; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; gap: 5px; }
         .enemy-box.stunned { filter: grayscale(100%) brightness(0.7); border-color: #555 !important; }
@@ -123,9 +131,14 @@
     <div id="top-bar">
         <div class="dashboard-group">
             <div class="gauge-circle"><span class="gauge-label">ENERGY</span><span id="ui-eng" class="gauge-val">3/3</span></div>
-            <div class="gauge-circle"><span class="gauge-label">WAVE</span><span id="ui-wave" class="gauge-val">1</span></div>
+            </div>
+        <div class="round-box">
+            <span class="info-label">TURN</span>
+            <span id="ui-turn" class="info-val">1</span>
+            <div class="divider"></div>
+            <span class="info-label">ROUND</span>
+            <span id="ui-round" class="info-val" style="font-size:1.2rem; color:#fff">1</span>
         </div>
-        <div class="round-box"><span style="font-size:0.5rem">TURN</span><span id="ui-turn" style="font-family:'Rye';font-size:1.5rem;color:var(--gold)">1</span></div>
     </div>
 
     <div id="battle-area">
@@ -191,7 +204,7 @@
         let state = {
             pHP:100, pMaxHP:100, pShd:0, pStr:0, pMarks:[], pPsn:0, pVuln:0, pWeak:0,
             eng:3, maxEng:3, maxHand:5, 
-            round:1, // Wave Number
+            round:1, // Wave Number (Round)
             turn:1,  // Current Battle Turn
             lib:[], deck:[], draw:[], disc:[], hand:[],
             enPool:[], waves:[], curWave:[], curEn:null, wIdx:0,
@@ -227,7 +240,6 @@
                 .replace(/{en_shd}/g, e?e.shd:0).replace(/{en_str}/g, e?e.str:0)
                 .replace(/{en_psn}/g, e?e.psn:0).replace(/{en_vuln}/g, e?e.vuln:0).replace(/{en_weak}/g, e?e.weak:0)
                 .replace(/{en_type}/g, e?e.type:1)
-                // ★ {round} is Wave, {turn} is current Battle Turn
                 .replace(/{round}/g, state.round).replace(/{wave}/g, state.curWave.length-state.wIdx)
                 .replace(/{turn}/g, state.turn); 
             try { return Math.floor(new Function('return '+x)()); } catch{ return 0; }
@@ -248,7 +260,6 @@
             document.body.classList.remove('boss-mode');
             if(state.wIdx >= state.curWave.length) return showReward();
             const r = state.curWave[state.wIdx];
-            // ★ Reset Turn to 1 for new enemy
             state.curEn = { ...r, curHP:r.hp, hp:r.hp, step:0, psn:0, vuln:0, weak:0, stun:false, marks:[], shd:0, str:0 };
             state.turn = 1; 
             state.wIdx++;
@@ -277,22 +288,19 @@
 
         function playCard(c, idx) {
             state.eng -= c.cost;
-            applyEffects(c.eff, 'player'); // Player is source
+            applyEffects(c.eff, 'player'); 
             state.hand.splice(idx, 1);
             if(c.eff.includes('[#once]') || c.isTemp) log("BANISHED"); else state.disc.push(c);
             cancelSel(); checkWin(); update(); renderHand();
         }
 
-        // --- Unified Effect Processor ---
         function applyEffects(effStr, source) {
             const isPlayer = source === 'player';
             const reg = /\[#(\w+)\s*([^\]]*)\]/g; let m;
             while((m=reg.exec(effStr))!==null) {
                 const tag=m[1], valRaw=m[2], val=resolveVal(valRaw);
                 const targetEn = isPlayer ? state.curEn : null;
-                const targetPl = isPlayer ? null : true;
-
-                // Damage
+                
                 if(tag==='dmg') {
                     if(isPlayer) { 
                         let d = val + state.pStr;
@@ -320,14 +328,6 @@
                     }
                 }
 
-                // Specialized
-                if(tag==='drain' && isPlayer) { 
-                     let d = val + state.pStr;
-                     let actual = d; // Simplified drain for player
-                     state.curEn.curHP -= actual;
-                     state.pHP = Math.min(state.pMaxHP, state.pHP + actual);
-                     log(`DRAIN ${actual}`);
-                }
                 if(tag==='en_drain' && !isPlayer) {
                      let d = val + (state.curEn.str||0);
                      let actual = Math.max(0, d - state.pShd);
@@ -338,7 +338,6 @@
                 if(tag==='heal') { if(isPlayer) state.pHP=Math.min(state.pMaxHP, state.pHP+val); else state.curEn.curHP=Math.min(state.curEn.hp, state.curEn.curHP+val); log(`HEAL ${val}`); }
                 if(tag==='str') { if(isPlayer) state.pStr+=val; else state.curEn.str=(state.curEn.str||0)+val; log(`STR ${val}`); }
                 
-                // Self Damage
                 if(tag==='sdmg' && isPlayer) { state.pHP-=val; log(`HURT ${val}`); }
                 if(tag==='en_sdmg' && !isPlayer) { state.curEn.curHP-=val; log(`EN SACRIFICE ${val}`); visualFlash('enemy-target','dmg'); if(state.curEn.curHP<=0) checkWin(); }
 
@@ -359,7 +358,6 @@
             }
         }
 
-        // --- Turn Logic ---
         document.getElementById('end-btn').onclick = () => {
             if(!state.curEn) return;
             state.hand.forEach(c => { if(!c.isTemp) state.disc.push(c); }); state.hand=[]; renderHand();
@@ -377,9 +375,7 @@
             if(state.curEn.vuln>0) state.curEn.vuln--; if(state.curEn.weak>0) state.curEn.weak--;
             
             // Player Start Turn
-            // ★ Turn Counter +1
-            state.turn++; 
-            
+            state.turn++; // ★ New Turn
             if(state.pPsn>0) { state.pHP-=state.pPsn; log(`POISON DMG ${state.pPsn}`); state.pPsn--; }
             if(state.pVuln>0) state.pVuln--; if(state.pWeak>0) state.pWeak--;
             state.pShd=0; state.eng=state.maxEng; drawCard(5); update();
@@ -419,8 +415,9 @@
 
         function update() {
             document.getElementById('ui-eng').innerText = `${state.eng}/${state.maxEng}`;
-            document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx;
-            document.getElementById('ui-turn').innerText = state.turn; // Update Turn UI
+            // document.getElementById('ui-wave').innerText = state.curWave.length - state.wIdx; // 移除左上 Wave
+            document.getElementById('ui-turn').innerText = state.turn; // Update Turn
+            document.getElementById('ui-round').innerText = state.round; // Update Round (Wave)
             document.getElementById('hand-counter').innerText = `${state.hand.length}/${state.maxHand}`;
             document.getElementById('ui-draw-n').innerText = state.draw.length;
             document.getElementById('ui-disc-n').innerText = state.disc.length;
@@ -470,7 +467,25 @@
 
         // --- Reward UI ---
         function showReward() { state.isRewardMode=true; document.getElementById('victory-screen').style.display='flex'; document.getElementById('reward-options').style.display='flex'; document.getElementById('next-lvl-btn').style.display='none'; }
-        window.goToNextLevel = () => { document.getElementById('victory-screen').style.display='none'; state.isRewardMode=false; state.round++; genWave(); initBattle(); };
+        
+        // ★ RESET STATS ON NEXT LEVEL ★
+        window.goToNextLevel = () => { 
+            document.getElementById('victory-screen').style.display='none'; 
+            state.isRewardMode=false; 
+            state.round++; 
+            // Reset Player Combat Stats
+            state.pShd = 0;
+            state.pStr = 0;
+            state.pMarks = [];
+            state.pPsn = 0;
+            state.pVuln = 0;
+            state.pWeak = 0;
+            state.eng = state.maxEng;
+            
+            genWave(); 
+            initBattle(); 
+        };
+        
         window.showPile = (t, arr) => { if(state.isRewardMode) return; const o=document.getElementById('card-selection-overlay'), c=document.getElementById('pile-viewer-content'); document.getElementById('selection-title-text').innerText=t; c.innerHTML=''; [...arr].sort((a,b)=>a.row-b.row).forEach(x=>c.appendChild(mkCardEl(x,true))); o.style.display='flex'; };
         window.closePileViewer = (e) => { if(e.target.id==='card-selection-overlay' && !state.isRewardMode) document.getElementById('card-selection-overlay').style.display='none'; };
         window.showRemoveCardUI = () => { const c=document.getElementById('pile-viewer-content'); c.innerHTML=''; state.deck.forEach((x,i)=>{const e=mkCardEl(x); e.onclick=(ev)=>{ev.stopPropagation();if(confirm("Remove?")){state.deck.splice(i,1); finishRew();}}; c.appendChild(e);}); document.getElementById('card-selection-overlay').style.display='flex'; };
